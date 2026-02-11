@@ -79,7 +79,7 @@ class UserViewRepo(ViewRepository):
                 active=user.active,
                 admin=user.admin,
                 deleted=user.deleted,
-                _password_hash=user.password,
+                _password_hash=user.password_hash,
             )
 
         return entity

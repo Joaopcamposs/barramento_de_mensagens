@@ -83,14 +83,14 @@ class TestCompanyAggregate:
     def test_create_sets_insert_operation_type(self) -> None:
         """Verifica que create() define o tipo de operação como INSERT."""
         company = _make_company()
-        company.create(user_id=None, password="secret123")
+        company.create(password="secret123")
 
         assert company._operation_type == OperationType.INSERT
 
     def test_create_emits_company_created_event(self) -> None:
         """Verifica que create() emite o evento CompanyCreated."""
         company = _make_company()
-        company.create(user_id=None, password="secret123")
+        company.create(password="secret123")
 
         created_events = [e for e in company.events if isinstance(e, CompanyCreated)]
         assert len(created_events) == 1
@@ -99,7 +99,7 @@ class TestCompanyAggregate:
     def test_create_emits_time_to_create_initial_user_event(self) -> None:
         """Verifica que create() emite evento para criar usuário inicial."""
         company = _make_company()
-        company.create(user_id=None, password="secret123")
+        company.create(password="secret123")
 
         user_events = [
             e for e in company.events if isinstance(e, TimeToCreateInitialCompanyUser)
@@ -114,7 +114,7 @@ class TestCompanyAggregate:
     def test_create_emits_admin_user_event_when_not_first_company(self) -> None:
         """Verifica que create() emite evento de usuário admin quando não é a primeira empresa."""
         company = _make_company()  # _first_company_id=None por padrão
-        company.create(user_id=None, password="secret123")
+        company.create(password="secret123")
 
         admin_events = [
             e for e in company.events if isinstance(e, TimeToCreateCompanyAdminUser)
@@ -126,7 +126,7 @@ class TestCompanyAggregate:
         """Verifica que create() NÃO emite evento de admin quando é a primeira empresa."""
         first_id = uuid7.create()
         company = _make_company(_first_company_id=first_id)
-        company.create(user_id=None, password="secret123")
+        company.create(password="secret123")
 
         admin_events = [
             e for e in company.events if isinstance(e, TimeToCreateCompanyAdminUser)
@@ -216,7 +216,7 @@ class TestCompanyAggregate:
     def test_multiple_operations_accumulate_events(self) -> None:
         """Verifica que múltiplas operações acumulam eventos."""
         company = _make_company()
-        company.create(user_id=None, password="secret123")
+        company.create(password="secret123")
         company.update(legal_name="New Acme Corp")
 
         created_events = [e for e in company.events if isinstance(e, CompanyCreated)]
@@ -392,7 +392,7 @@ class TestCompanyEntity:
         import pytest
 
         with pytest.raises(AttributeError):
-            entity.legal_name = "New Name"  # type: ignore
+            setattr(entity, "legal_name", "New Name")
 
 
 class TestCompanySchemas:

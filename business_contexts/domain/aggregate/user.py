@@ -21,7 +21,6 @@ class User(Aggregate, UserSecurity):
     company: UUID
     email: str
     cpf: str
-    password: str
     active: bool
     admin: bool
 
@@ -58,7 +57,7 @@ class User(Aggregate, UserSecurity):
             company=company,
             email=email,
             cpf=cpf,
-            password=hash_password,
+            _password_hash=hash_password,
             active=active,
             admin=admin,
         )
@@ -95,7 +94,7 @@ class User(Aggregate, UserSecurity):
         if email is not None:
             self.email = email
         if password is not None:
-            self.password = password
+            self._password_hash = self.encrypt_password(password)
         if active is not None:
             self.active = active
         if admin is not None:
@@ -157,7 +156,7 @@ class PublicUser(Aggregate, UserSecurity):
             company=user.company,
             email_encrypted=encrypted_email,
             email_hash=email_hash,
-            _password_hash=user._password_hash,
+            _password_hash=user.password_hash,
             active=user.active,
         )
 

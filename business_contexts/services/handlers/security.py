@@ -1,7 +1,7 @@
 """Módulo de handlers de segurança e autenticação."""
 
 from contextvars import ContextVar
-from typing import Annotated
+from typing import Annotated, cast
 
 import jwt
 from fastapi import Depends
@@ -32,7 +32,7 @@ async def authenticate_user(command: AuthenticateUser, uow: UnitOfWork) -> Token
         Token JWT se autenticado com sucesso, None caso contrário.
     """
     async with uow(Domain.user) as uow:
-        view_repo: UserViewRepo = uow.view_repo
+        view_repo: UserViewRepo = cast(UserViewRepo, uow.view_repo)
 
         user = await view_repo.get_public_user_by_email(command.email)
         if not user:
@@ -70,7 +70,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
 
     uow = UnitOfWork(schema=str(company_id))
     async with uow(Domain.user) as uow:
-        view_repo: UserViewRepo = uow.view_repo
+        view_repo: UserViewRepo = cast(UserViewRepo, uow.view_repo)
         user = await view_repo.get_by_email(email)
 
     if user is None:

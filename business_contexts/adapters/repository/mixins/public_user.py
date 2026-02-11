@@ -66,11 +66,11 @@ class PublicUserMixin(ABC):
             "active": public_user.active,
             "email_encrypted": public_user.email_encrypted,
             "email_hash": public_user.email_hash,
-            "password_hash": public_user._password_hash,
+            "_password_hash": public_user.password_hash,
             "deleted": public_user.deleted,
         }
 
-        match public_user._operation_type:
+        match public_user.operation_type:
             case OperationType.INSERT:
                 operation = insert(PublicUser).values(data)
             case OperationType.UPDATE:

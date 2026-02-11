@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from infra.database import DEFAULT_ASYNC_SQL_SESSION_FACTORY
+from infra.database import default_async_sql_session_factory
 from infra.database.schema_handlers import create_full_schema_within_transaction
 from messagebus.entities import DomainRepository, UserBase, ViewRepository
 
@@ -43,7 +43,7 @@ class AbstractUnitOfWork(ABC):
 
     def __init__(
         self,
-        session_factory: AsyncSession = DEFAULT_ASYNC_SQL_SESSION_FACTORY,
+        session_factory: AsyncSession = default_async_sql_session_factory,
         user: UserBase | None = None,
         schema: str | None = None,
         create_schema: bool = False,
@@ -56,7 +56,7 @@ class AbstractUnitOfWork(ABC):
         ):
             raise UnitOfWorkWithProblem("The user does not belong to this schema.")
 
-        self.sql_session_factory = session_factory or DEFAULT_ASYNC_SQL_SESSION_FACTORY
+        self.sql_session_factory = session_factory or default_async_sql_session_factory
         self.user = user
         self.schema = schema or (str(self.user.company) if self.user else None)
         self.create_schema = create_schema
@@ -164,10 +164,10 @@ class UnitOfWork(AbstractUnitOfWork, Generic[WRITE_REPO, READ_REPO]):
         )
 
         if not self.read_only and self.domain_repo:
-            self.domain_repo = self.domain_repo(self.session)
+            self.domain_repo = self.domain_repo(self.session)  # type: ignore[operator]
 
         if self.view_repo:
-            self.view_repo = self.view_repo(self.read_session)
+            self.view_repo = self.view_repo(self.read_session)  # type: ignore[operator]
 
         return await super().__aenter__()  # type: ignore[return-value]
 

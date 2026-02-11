@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from validate_docbr import CPF as CPFValidator
+from validate_docbr import CPF as CPFValidator  # noqa: N811
 
 
 class CPF(str):
@@ -40,7 +40,7 @@ class CNPJ(str):
             return None
         if isinstance(value, str):
             value = cls.digits_only(value)
-        return super().__new__(cls, value)
+        return super().__new__(cls, value)  # type: ignore[report-arg-type]
 
     @staticmethod
     def digits_only(cnpj: str) -> str:
@@ -53,5 +53,5 @@ class Email(str):
 
     def __new__(cls, value: str) -> Email | None:  # type: ignore[misc]
         if isinstance(value, str):
-            return super().__new__(cls, value.lower())
+            return super().__new__(cls, value.lower())  # type: ignore[report-arg-type]
         return None

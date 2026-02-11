@@ -1,0 +1,7 @@
+target-version = "py311"
+line-length = 90
+
+[lint.per-file-ignores]
+"__init__.py" = ["E402", "F403", "F401"]
+"**/{tests}/*" = ["E402", "F403"]
+"conftest.py" = ["F401"]  # Ignora F401 apenas no conftest.py

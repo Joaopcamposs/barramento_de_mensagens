@@ -37,6 +37,10 @@ class Company(Aggregate):
     def __hash__(self) -> int:
         return hash(self.id)
 
+    @property
+    def first_company_id(self) -> UUID | None:
+        return self._first_company_id
+
     @staticmethod
     def create_aggregate(
         legal_name: str,
@@ -80,7 +84,6 @@ class Company(Aggregate):
 
     def create(
         self,
-        user_id: UUID | None,
         password: str,
         should_create_user: bool = True,
     ) -> None:

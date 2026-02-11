@@ -6,13 +6,12 @@ from abc import ABC
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import bcrypt
 import jwt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from business_contexts.consts import (
@@ -27,7 +26,8 @@ if TYPE_CHECKING:
     from messagebus.messagebus import Event
 
 
-class UserBase(BaseModel):
+@dataclass
+class UserBase:
     """Modelo base de usuário com informações mínimas."""
 
     company: UUID
@@ -75,6 +75,10 @@ class Aggregate:
     events: list["Event"] = field(default_factory=list)
     _operation_type: OperationType | None = None
 
+    @property
+    def operation_type(self) -> OperationType | None:
+        return self._operation_type
+
     def add_event(self, event: "Event") -> None:
         """Adiciona um evento à lista de eventos do agregado."""
         from messagebus.messagebus import Event
@@ -88,6 +92,10 @@ class UserSecurity:
     """Mixin de segurança para operações com senha e email do usuário."""
 
     _password_hash: str | None = None
+
+    @property
+    def password_hash(self) -> str | None:
+        return self._password_hash
 
     def verify_password(self, password: str) -> bool:
         """Verifica se a senha informada confere com o hash armazenado."""
@@ -141,7 +149,7 @@ class UserSecurity:
         Returns:
             Token JWT com tipo bearer.
         """
-        data_to_encode = {
+        data_to_encode: dict[str, Any] = {
             "email": self.decrypt_email(encrypted_email),
             "id_empresa": str(company_id),
         }

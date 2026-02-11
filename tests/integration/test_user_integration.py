@@ -261,7 +261,7 @@ class TestViewUser:
 
     async def test_view_nonexistent_user_returns_empty_list(self, engine) -> None:
         """Verifica que consultar usuário inexistente retorna lista vazia."""
-        company_id = await _create_company()
+        await _create_company()
         uow = UnitOfWork()
         users = await view_user(uow, email="nobody@example.com")
 
@@ -286,7 +286,7 @@ class TestViewUser:
 
     async def test_view_all_users_empty_company(self, engine) -> None:
         """Verifica que consultar empresa sem usuários retorna lista vazia."""
-        company_id = await _create_company()
+        await _create_company()
         uow = UnitOfWork()
         users = await view_user(uow)
 

@@ -147,7 +147,7 @@ class UserDomainRepo(AbstractUserDomainRepo, PublicUserMixin):
                 company=user.company,
                 email=user.email,
                 cpf=user.cpf,
-                password=user.password,
+                _password_hash=user.password_hash,
                 active=user.active,
                 admin=user.admin,
                 deleted=user.deleted,
@@ -185,7 +185,7 @@ class UserDomainRepo(AbstractUserDomainRepo, PublicUserMixin):
                 company=user.company,
                 email=user.email,
                 cpf=user.cpf,
-                password=user.password,
+                _password_hash=user.password_hash,
                 active=user.active,
                 admin=user.admin,
                 deleted=user.deleted,
@@ -203,14 +203,14 @@ class UserDomainRepo(AbstractUserDomainRepo, PublicUserMixin):
             "company": user.company,
             "email": user.email,
             "cpf": user.cpf,
-            "password": user.password,
+            "_password_hash": user.password_hash,
             "active": user.active,
             "admin": user.admin,
             "deleted": user.deleted,
         }
 
         operation: Executable
-        match user._operation_type:
+        match user.operation_type:
             case OperationType.INSERT:
                 operation = insert(User).values(data)
             case OperationType.UPDATE:

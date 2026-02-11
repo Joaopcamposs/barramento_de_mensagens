@@ -55,8 +55,8 @@ class TestUserAggregate:
         assert user.company == company_id
         assert user.email == "test@example.com"
         assert user.cpf == "12345678901"
-        assert user.password != "secret123"  # senha é hasheada pelo bcrypt
-        assert user.password.startswith("$2b$")
+        assert user.password_hash != "secret123"  # senha é hasheada pelo bcrypt
+        assert user.password_hash.startswith("$2b$")
         assert user.active is True
         assert user.admin is False
         assert user.deleted is False
@@ -153,7 +153,7 @@ class TestUserAggregate:
         )
         user.update(password="newpassword")
 
-        assert user.password == "newpassword"
+        assert user.password_hash.startswith("$2b$")
 
     def test_update_changes_active(self) -> None:
         """Verifica que update() altera o status de ativação."""
@@ -189,11 +189,11 @@ class TestUserAggregate:
             cpf="12345678901",
             password="secret123",
         )
-        original_password = user.password
+        original_password = user.password_hash
         user.update(email=None, password=None, active=None, admin=None)
 
         assert user.email == "test@example.com"
-        assert user.password == original_password
+        assert user.password_hash == original_password
         assert user.active is True
         assert user.admin is False
 
@@ -575,7 +575,8 @@ class TestUserAggregateBelongsToCompany:
 class TestPublicUserAggregate:
     """Testes para o agregado PublicUser."""
 
-    def _make_user(self) -> User:
+    @staticmethod
+    def _make_user() -> User:
         """Função auxiliar para criar um agregado User."""
         return User.create_aggregate(
             company=uuid7.create(),

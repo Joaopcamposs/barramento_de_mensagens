@@ -1,5 +1,6 @@
 """Módulo de handlers de comandos e eventos do domínio User."""
 
+from typing import cast
 from uuid import UUID
 
 from business_contexts.adapters.repository.domain_repo.user import (
@@ -32,7 +33,7 @@ async def create_user(
 ) -> UUID:
     """Handler para criação de usuário."""
     async with uow(Domain.user) as uow:
-        domain_repo: UserDomainRepo = uow.domain_repo
+        domain_repo: UserDomainRepo = cast(UserDomainRepo, uow.domain_repo)
 
         user = await domain_repo.create_aggregate(
             company=command_or_event.company,
@@ -53,7 +54,7 @@ async def create_user(
 async def update_user(command: UpdateUser, uow: UnitOfWork) -> None:
     """Handler para atualização de usuário."""
     async with uow(Domain.user) as uow:
-        domain_repo: UserDomainRepo = uow.domain_repo
+        domain_repo: UserDomainRepo = cast(UserDomainRepo, uow.domain_repo)
 
         user = await domain_repo.get_by_email(
             email=command.email,
@@ -72,7 +73,7 @@ async def update_user(command: UpdateUser, uow: UnitOfWork) -> None:
 async def delete_user(command: DeleteUser, uow: UnitOfWork) -> None:
     """Handler para exclusão (soft delete) de usuário."""
     async with uow(Domain.user) as uow:
-        domain_repo: UserDomainRepo = uow.domain_repo
+        domain_repo: UserDomainRepo = cast(UserDomainRepo, uow.domain_repo)
 
         user = await domain_repo.get_by_email(
             email=command.email,
@@ -101,8 +102,8 @@ async def user_deleted(event: UserDeleted, uow: UnitOfWork) -> None:
 async def create_public_user(event: UserCreated, uow: UnitOfWork) -> UUID:
     """Handler para criação do usuário público após criação do usuário privado."""
     async with uow(Domain.user) as uow:
-        domain_repo: UserDomainRepo = uow.domain_repo
-        view_repo: UserViewRepo = uow.view_repo
+        domain_repo: UserDomainRepo = cast(UserDomainRepo, uow.domain_repo)
+        view_repo: UserViewRepo = cast(UserViewRepo, uow.view_repo)
 
         user = await view_repo.get_by_id(id=event.id)
         public_user = PublicUser.create_registration_aggregate(user=user)
@@ -119,15 +120,15 @@ async def create_public_user(event: UserCreated, uow: UnitOfWork) -> UUID:
 async def update_public_user(event: UserUpdated, uow: UnitOfWork) -> None:
     """Handler para atualização do usuário público após atualização do usuário privado."""
     async with uow(Domain.user) as uow:
-        domain_repo: UserDomainRepo = uow.domain_repo
-        view_repo: UserViewRepo = uow.view_repo
+        domain_repo: UserDomainRepo = cast(UserDomainRepo, uow.domain_repo)
+        view_repo: UserViewRepo = cast(UserViewRepo, uow.view_repo)
 
         private_user = await view_repo.get_by_id(id=event.id)
 
         public_user = await domain_repo.get_public_user_by_id(id=event.id)
         public_user.update(
             email=private_user.email,
-            password=private_user._password_hash,
+            password=private_user.password_hash,
             active=private_user.active,
         )
 
@@ -140,7 +141,7 @@ async def update_public_user(event: UserUpdated, uow: UnitOfWork) -> None:
 async def remove_public_user(event: UserDeleted, uow: UnitOfWork) -> None:
     """Handler para remoção (soft delete) do usuário público após exclusão do usuário privado."""
     async with uow(Domain.user) as uow:
-        domain_repo: UserDomainRepo = uow.domain_repo
+        domain_repo: UserDomainRepo = cast(UserDomainRepo, uow.domain_repo)
 
         public_user = await domain_repo.get_public_user_by_id(id=event.id)
         public_user.remove()

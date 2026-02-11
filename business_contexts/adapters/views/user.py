@@ -1,5 +1,7 @@
 """Módulo de views de consulta de User."""
 
+from typing import cast
+
 from business_contexts.adapters.repository.view_repo.user import (
     UserViewRepo,
 )
@@ -26,7 +28,7 @@ async def view_user(
         Lista de entidades User da empresa informada.
     """
     async with uow(Domain.user) as uow:
-        view_repo: UserViewRepo = uow.view_repo
+        view_repo: UserViewRepo = cast(UserViewRepo, uow.view_repo)
         if email:
             user = await view_repo.get_by_email(
                 email=email, include_deleted=include_deleted

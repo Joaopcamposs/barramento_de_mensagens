@@ -58,7 +58,7 @@ async def put_user(body: UpdateUserSchema) -> None:
 async def get_user(
     email: str | None = None,
     include_deleted: bool = False,
-) -> list[ReadUserSchema]:
+):
     """Consulta usuários de uma empresa. A empresa é obrigatória."""
     uow = UnitOfWork(user=current_user.get())
     users = await view_user(uow, email=email, include_deleted=include_deleted)

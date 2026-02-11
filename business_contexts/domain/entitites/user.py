@@ -3,11 +3,11 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from messagebus.entities import UserSecurity
+from messagebus.entities import UserSecurity, UserBase
 
 
 @dataclass(kw_only=True)
-class User(UserSecurity):
+class User(UserBase, UserSecurity):
     """Entidade de leitura que representa um usuário."""
 
     id: UUID

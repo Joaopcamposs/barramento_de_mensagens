@@ -201,7 +201,11 @@ class TestTokenValidation:
         token = await _authenticate("wrongkey@test.com", "secret123")
 
         with pytest.raises(jwt.exceptions.InvalidSignatureError):
-            jwt.decode(token.access_token, "wrong_secret", algorithms=[ALGORITHM])
+            jwt.decode(
+                token.access_token,
+                "wrong_secret_with_48_bytes_length_lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit",
+                algorithms=[ALGORITHM],
+            )
 
 
 class TestGetCurrentUser:
@@ -244,7 +248,11 @@ class TestGetCurrentUser:
             "id_empresa": "some-uuid",
             "exp": datetime.now(tz=UTC) + timedelta(hours=1),
         }
-        token_str = jwt.encode(payload, "other_secret", algorithm="HS384")
+        token_str = jwt.encode(
+            payload,
+            "other_secret_with_48_bytes_length_lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit",
+            algorithm="HS384",
+        )
 
         with pytest.raises(CredentialsException):
             await get_current_user(token_str)

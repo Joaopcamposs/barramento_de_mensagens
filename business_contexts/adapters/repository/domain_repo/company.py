@@ -176,7 +176,7 @@ class CompanyDomainRepo(AbstractCompanyDomainRepo):
     ) -> None:
         """Persiste uma empresa no banco de dados (inserção ou atualização)."""
         data = {
-            "id": company._first_company_id or company.id,
+            "id": company.first_company_id or company.id,
             "legal_name": company.legal_name,
             "trade_name": company.trade_name,
             "responsible_name": company.responsible_name,
@@ -188,7 +188,7 @@ class CompanyDomainRepo(AbstractCompanyDomainRepo):
         }
 
         operation: Executable
-        match company._operation_type:
+        match company.operation_type:
             case OperationType.INSERT:
                 operation = insert(Company).values(data)
             case OperationType.UPDATE:

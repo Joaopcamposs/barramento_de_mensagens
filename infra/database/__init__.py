@@ -1,18 +1,17 @@
 """Módulo de configuração e gerenciamento do banco de dados."""
 
-from sqlalchemy.orm import registry
 import os
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from sqlalchemy import NullPool, text
 from sqlalchemy.ext.asyncio import (
-    AsyncSession,
     AsyncEngine,
+    AsyncSession,
     create_async_engine,
 )
+from sqlalchemy.orm import registry
 
-from business_contexts.consts import DB_HOST, DB_PASSWORD, DB_USER, DB_NAME
 from messagebus.entities import UserSecurity
 
 mapper_registry = registry()
@@ -20,33 +19,43 @@ mapper_registry = registry()
 engine: AsyncEngine | None = None
 
 
-def get_database_uri(is_test: bool = False) -> str:
+def get_database_uri() -> str:
     """
     Monta a URI de conexão com o banco de dados.
 
-    Args:
-        is_test: Se True, utiliza configurações de teste.
+    Lê variáveis de ambiente diretamente (sem cache) para garantir
+    que testes nunca conectem ao banco de produção.
 
     Returns:
         URI de conexão formatada.
     """
-    test_environment = is_test or os.getenv("TEST_ENV", False)
+    test_environment = os.getenv("TEST_ENV", "false").lower() == "true"
     in_docker = os.getenv("IN_DOCKER", "false").lower() == "true"
 
-    host = DB_HOST
-    default_port = 5432 if any([test_environment, in_docker]) else 54322
-    port = int(os.getenv("DB_PORT", default_port))
-    password = DB_PASSWORD
-    user = DB_USER
-    db_name = DB_NAME
-    database_uri = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}"
+    host = os.getenv("DB_HOST", "localhost")
+    password = os.getenv("DB_PASSWORD", "password")
+    user = os.getenv("DB_USER", "postgres")
+    db_name = os.getenv("DB_NAME", "postgres")
 
+    default_port = 54322
+    if any([test_environment, in_docker]):
+        default_port = 5432
+
+    port = int(os.getenv("DB_PORT", default_port))
+
+    if test_environment and db_name == "postgres":
+        raise RuntimeError(
+            "TEST_ENV está ativo mas DB_NAME é 'postgres' (banco de produção). "
+            "Defina DB_NAME=test_db para ambiente de testes."
+        )
+
+    database_uri = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}"
     return database_uri
 
 
 async def set_schema_name(session: AsyncSession, schema: str) -> None:
     await session.execute(text(f'SET search_path TO "{schema}"'))
-    setattr(session, "schema", str(schema))
+    session.schema = str(schema)
 
 
 def get_async_sql_engine(
@@ -86,7 +95,7 @@ def get_async_sql_engine(
     return _create_engine()
 
 
-async def DEFAULT_ASYNC_SQL_SESSION_FACTORY(
+async def default_async_sql_session_factory(
     read_only: bool,
     schema: str | None = None,
     isolation_level: str = "READ COMMITTED",
@@ -100,6 +109,7 @@ async def DEFAULT_ASYNC_SQL_SESSION_FACTORY(
 
     Args:
         read_only: Se True, cria sessão somente leitura com AUTOCOMMIT.
+        schema: Schema a ser utilizado na sessão.
         isolation_level: Nível de isolamento da transação.
         force_create_engine: Se True, força criação de nova engine.
 
@@ -142,13 +152,12 @@ async def get_session(
 
     Args:
         read_only: Se True, cria sessão somente leitura.
+        schema: Schema a ser utilizado
 
     Yields:
         Sessão assíncrona do SQLAlchemy.
     """
-    session = await DEFAULT_ASYNC_SQL_SESSION_FACTORY(
-        read_only=read_only, schema=schema
-    )
+    session = await default_async_sql_session_factory(read_only=read_only, schema=schema)
     try:
         yield session
     finally:

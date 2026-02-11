@@ -60,9 +60,7 @@ async def put_company(body: UpdateCompanySchema) -> None:
 
 
 @router.get("/company", response_model=list[ReadCompanySchema])
-async def get_company(
-    legal_name: str | None = None, include_deleted: bool = False
-) -> list[ReadCompanySchema]:
+async def get_company(legal_name: str | None = None, include_deleted: bool = False):
     """Consulta empresas. Se a razão social for informada, filtra pela razão social."""
     uow = UnitOfWork(user=current_user.get())
     companies = await view_company(

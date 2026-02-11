@@ -20,7 +20,7 @@ user = Table(
     mapper_registry.metadata,
     Column("id", UUID, primary_key=True),
     Column("email", String(255), nullable=False),
-    Column("password", String, nullable=False),
+    Column("password_hash", String, nullable=False, key="_password_hash"),
     Column("cpf", String(11), nullable=False),
     Column("active", Boolean, nullable=False),
     Column("admin", Boolean, nullable=False),
@@ -42,7 +42,7 @@ public_user = Table(
     Column("company", UUID, nullable=False),
     Column("email_encrypted", LargeBinary, nullable=False),
     Column("email_hash", String(64), nullable=False),
-    Column("password_hash", String(128), nullable=False),
+    Column("password_hash", String(128), nullable=False, key="_password_hash"),
     Column("active", Boolean, nullable=False),
     Column("deleted", Boolean, nullable=False, default=False),
     Index(
