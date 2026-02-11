@@ -5,7 +5,7 @@ from typing import Annotated
 
 import jwt
 from fastapi import Depends
-from passlib.exc import InvalidTokenError
+from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
 
 from business_contexts.adapters.repository.view_repo.user import UserViewRepo

@@ -4,7 +4,7 @@ import hashlib
 import os
 from abc import ABC
 from dataclasses import dataclass, field
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -146,9 +146,11 @@ class UserSecurity:
             "email": self.decrypt_email(encrypted_email),
             "id_empresa": str(company_id),
         }
-        expire = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(tz=timezone.utc) + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
         if expires_delta:
-            expire = datetime.now() + expires_delta
+            expire = datetime.now(tz=timezone.utc) + expires_delta
         data_to_encode.update({"exp": expire})
         encoded_jwt = jwt.encode(data_to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return Token(access_token=encoded_jwt, token_type="bearer")

@@ -57,7 +57,7 @@ class AbstractUnitOfWork(ABC):
 
         self.sql_session_factory = session_factory or DEFAULT_ASYNC_SQL_SESSION_FACTORY
         self.user = user
-        self.schema = schema
+        self.schema = schema or str(self.user.company)
         self.create_schema = create_schema
         self._active_context = False
 
