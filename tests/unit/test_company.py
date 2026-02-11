@@ -1,30 +1,31 @@
 """Testes unitários para o fluxo de Company."""
 
 from uuid import UUID
+
 import uuid7
 
-from messagebus.entities import Aggregate, OperationType
 from business_contexts.domain.aggregate.company import Company
 from business_contexts.domain.commands.company import (
     CreateCompany,
-    UpdateCompany,
     DeleteCompany,
+    UpdateCompany,
 )
 from business_contexts.domain.entitites.company import Company as CompanyEntity
 from business_contexts.domain.events.company import (
     CompanyCreated,
-    CompanyUpdated,
     CompanyDeleted,
+    CompanyUpdated,
 )
 from business_contexts.domain.events.user import (
-    TimeToCreateInitialCompanyUser,
     TimeToCreateCompanyAdminUser,
+    TimeToCreateInitialCompanyUser,
 )
 from business_contexts.entrypoints.schemas.company import (
     CreateCompanySchema,
-    UpdateCompanySchema,
     ReadCompanySchema,
+    UpdateCompanySchema,
 )
+from messagebus.entities import Aggregate, OperationType
 
 
 def _make_company(**overrides) -> Company:

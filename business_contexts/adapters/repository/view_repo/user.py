@@ -4,10 +4,10 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from messagebus.entities import ViewRepository
-from business_contexts.domain.aggregate.user import User as UserAggregate
-from business_contexts.domain.entitites.user import User, PublicUser
 from business_contexts.domain.aggregate.user import PublicUser as PublicUserAggregate
+from business_contexts.domain.aggregate.user import User as UserAggregate
+from business_contexts.domain.entitites.user import PublicUser, User
+from messagebus.entities import ViewRepository
 
 
 class UserViewRepo(ViewRepository):

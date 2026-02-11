@@ -2,23 +2,23 @@
 
 from uuid import UUID
 
-from infra.database import delete_schema
-from messagebus.messagebus import logger
-from messagebus.unity_of_work import UnitOfWork
 from business_contexts.adapters.repository.domain_repo.company import (
     CompanyDomainRepo,
 )
 from business_contexts.domain.commands.company import (
     CreateCompany,
-    UpdateCompany,
     DeleteCompany,
+    UpdateCompany,
 )
-from messagebus.domains import Domain
 from business_contexts.domain.events.company import (
     CompanyCreated,
-    CompanyUpdated,
     CompanyDeleted,
+    CompanyUpdated,
 )
+from infra.database import delete_schema
+from messagebus.domains import Domain
+from messagebus.messagebus import logger
+from messagebus.unity_of_work import UnitOfWork
 
 
 async def create_company(command: CreateCompany, uow: UnitOfWork) -> UUID:

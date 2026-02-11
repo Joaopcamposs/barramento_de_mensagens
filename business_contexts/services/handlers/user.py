@@ -2,26 +2,26 @@
 
 from uuid import UUID
 
-from business_contexts.adapters.repository.view_repo.user import UserViewRepo
-from business_contexts.domain.aggregate.user import PublicUser
-from messagebus.messagebus import logger
-from messagebus.unity_of_work import UnitOfWork
 from business_contexts.adapters.repository.domain_repo.user import (
     UserDomainRepo,
 )
+from business_contexts.adapters.repository.view_repo.user import UserViewRepo
+from business_contexts.domain.aggregate.user import PublicUser
 from business_contexts.domain.commands.user import (
     CreateUser,
-    UpdateUser,
     DeleteUser,
+    UpdateUser,
+)
+from business_contexts.domain.events.user import (
+    TimeToCreateCompanyAdminUser,
+    TimeToCreateInitialCompanyUser,
+    UserCreated,
+    UserDeleted,
+    UserUpdated,
 )
 from messagebus.domains import Domain
-from business_contexts.domain.events.user import (
-    UserCreated,
-    UserUpdated,
-    UserDeleted,
-    TimeToCreateInitialCompanyUser,
-    TimeToCreateCompanyAdminUser,
-)
+from messagebus.messagebus import logger
+from messagebus.unity_of_work import UnitOfWork
 
 
 async def create_user(

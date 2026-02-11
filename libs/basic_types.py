@@ -1,6 +1,7 @@
 """Módulo de tipos básicos de valor para validação de documentos e dados."""
 
 from __future__ import annotations
+
 from validate_docbr import CPF as CPFValidator
 
 

@@ -2,11 +2,8 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, Depends, status
 
-from business_contexts.services.handlers.security import get_current_user, current_user
-from messagebus.bootstrap import bootstrap
-from messagebus.unity_of_work import UnitOfWork
 from business_contexts.adapters.views.company import view_company
 from business_contexts.domain.commands.company import (
     CreateCompany,
@@ -18,6 +15,9 @@ from business_contexts.entrypoints.schemas.company import (
     ReadCompanySchema,
     UpdateCompanySchema,
 )
+from business_contexts.services.handlers.security import current_user, get_current_user
+from messagebus.bootstrap import bootstrap
+from messagebus.unity_of_work import UnitOfWork
 
 router = APIRouter(
     prefix="/v1", tags=["Companies"], dependencies=[Depends(get_current_user)]

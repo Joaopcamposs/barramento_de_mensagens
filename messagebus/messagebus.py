@@ -1,12 +1,12 @@
 import logging
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any, NewType
 
 import sentry_sdk
 
 from messagebus.unity_of_work import AbstractUnitOfWork
-from typing import Callable, NewType, Any
-
 
 # Configure logging to show INFO level messages
 logging.basicConfig(

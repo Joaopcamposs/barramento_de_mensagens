@@ -4,16 +4,17 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Generator
-from typing import Any, Generic, TypeVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from infra.database.schema_handlers import create_full_schema_within_transaction
-from messagebus.entities import UserBase, DomainRepository, ViewRepository
 from infra.database import DEFAULT_ASYNC_SQL_SESSION_FACTORY
+from infra.database.schema_handlers import create_full_schema_within_transaction
+from messagebus.entities import DomainRepository, UserBase, ViewRepository
 
 if TYPE_CHECKING:
-    from messagebus.messagebus import Event
     from messagebus.domains import Domain
+    from messagebus.messagebus import Event
 
 
 class UnitOfWorkContextAlreadyOpen(Exception):
@@ -63,7 +64,7 @@ class AbstractUnitOfWork(ABC):
 
     def __call__(
         self,
-        domain: "Domain" | None = None,  # type: ignore
+        domain: Domain | None = None,  # type: ignore
     ) -> AbstractUnitOfWork:
         """
         Configura os repositórios baseado no domínio.
@@ -109,7 +110,7 @@ class AbstractUnitOfWork(ABC):
         """Desfaz todas as alterações pendentes."""
         await self.session.rollback()
 
-    def collect_new_events(self) -> Generator["Event", None, None]:
+    def collect_new_events(self) -> Generator[Event, None, None]:
         """
         Coleta eventos pendentes de todos os agregados rastreados.
 

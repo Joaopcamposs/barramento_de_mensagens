@@ -4,16 +4,16 @@ from abc import abstractmethod
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, update, insert
+from sqlalchemy import insert, select, update
 from sqlalchemy.sql import Executable
 
 from business_contexts.adapters.repository.mixins.public_user import PublicUserMixin
-from messagebus.entities import DomainRepository, OperationType
 from business_contexts.domain.aggregate.user import User
 from business_contexts.domain.excecoes import (
     UserAlreadyRegistered,
     UserNotFound,
 )
+from messagebus.entities import DomainRepository, OperationType
 
 
 class AbstractUserDomainRepo(DomainRepository):

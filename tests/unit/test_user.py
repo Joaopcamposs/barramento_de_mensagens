@@ -7,35 +7,35 @@ import uuid7
 from messagebus.entities import Aggregate, OperationType, UserSecurity
 
 _TEST_COMPANY_ID = uuid7.create()
-from business_contexts.domain.aggregate.user import User, PublicUser
+from business_contexts.domain.aggregate.user import PublicUser, User
+from business_contexts.domain.commands.security import AuthenticateUser
 from business_contexts.domain.commands.user import (
     CreateUser,
-    UpdateUser,
     DeleteUser,
+    UpdateUser,
 )
-from business_contexts.domain.commands.security import AuthenticateUser
-from business_contexts.domain.entitites.user import User as UserEntity
 from business_contexts.domain.entitites.user import PublicUser as PublicUserEntity
+from business_contexts.domain.entitites.user import User as UserEntity
 from business_contexts.domain.events.user import (
-    UserCreated,
-    UserUpdated,
-    UserDeleted,
-    TimeToCreateInitialCompanyUser,
     TimeToCreateCompanyAdminUser,
+    TimeToCreateInitialCompanyUser,
+    UserCreated,
+    UserDeleted,
+    UserUpdated,
 )
 from business_contexts.domain.excecoes import (
-    UserAlreadyRegistered,
-    UserNotFound,
     CompanyAlreadyRegistered,
     CompanyNotFound,
     CredentialsException,
-)
-from business_contexts.entrypoints.schemas.user import (
-    CreateUserSchema,
-    UpdateUserSchema,
-    ReadUserSchema,
+    UserAlreadyRegistered,
+    UserNotFound,
 )
 from business_contexts.entrypoints.schemas.security import Token, TokenData
+from business_contexts.entrypoints.schemas.user import (
+    CreateUserSchema,
+    ReadUserSchema,
+    UpdateUserSchema,
+)
 
 
 class TestUserAggregate:
@@ -660,9 +660,7 @@ class TestPublicUserAggregate:
         """Verifica que update() altera senha e status de ativação."""
         user = self._make_user()
         public_user = PublicUser.create_registration_aggregate(user=user)
-        public_user.update(
-            email="test@example.com", password="newpasshash", active=False
-        )
+        public_user.update(email="test@example.com", password="newpasshash", active=False)
 
         assert public_user._password_hash == "newpasshash"
         assert public_user.active is False

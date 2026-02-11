@@ -4,14 +4,14 @@ from dataclasses import dataclass
 
 import pytest
 
+from messagebus.entities import OperationType
 from messagebus.messagebus import (
     Command,
-    Event,
-    MessageBus,
     CommandHandlers,
+    Event,
     EventHandlers,
+    MessageBus,
 )
-from messagebus.entities import OperationType
 
 
 class FakeUnitOfWork:
@@ -138,9 +138,7 @@ class TestMessageBus:
         with pytest.raises(ValueError, match="event error"):
             await bus.handle(FakeEvent(value="test"))
 
-    async def test_queue_processes_events_from_command(
-        self, uow: FakeUnitOfWork
-    ) -> None:
+    async def test_queue_processes_events_from_command(self, uow: FakeUnitOfWork) -> None:
         """Verifica que eventos gerados por comandos são processados."""
         event_results: list[str] = []
 

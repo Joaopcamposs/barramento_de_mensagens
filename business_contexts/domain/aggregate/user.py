@@ -2,14 +2,15 @@
 
 from dataclasses import dataclass
 from uuid import UUID
+
 import uuid7
 
-from messagebus.entities import Aggregate, OperationType, UserSecurity
 from business_contexts.domain.events.user import (
     UserCreated,
-    UserUpdated,
     UserDeleted,
+    UserUpdated,
 )
+from messagebus.entities import Aggregate, OperationType, UserSecurity
 
 
 @dataclass(kw_only=True)

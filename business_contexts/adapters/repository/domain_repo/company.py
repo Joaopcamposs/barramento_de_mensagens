@@ -4,15 +4,15 @@ from abc import abstractmethod
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, insert, update
+from sqlalchemy import insert, select, update
 from sqlalchemy.sql import Executable
 
-from messagebus.entities import DomainRepository, OperationType
 from business_contexts.domain.aggregate.company import Company
 from business_contexts.domain.excecoes import (
     CompanyAlreadyRegistered,
     CompanyNotFound,
 )
+from messagebus.entities import DomainRepository, OperationType
 
 
 class AbstractCompanyDomainRepo(DomainRepository):

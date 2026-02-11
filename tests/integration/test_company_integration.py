@@ -4,18 +4,18 @@ from uuid import UUID
 
 import pytest
 
-from messagebus.bootstrap import bootstrap
-from messagebus.unity_of_work import UnitOfWork
 from business_contexts.adapters.views.company import view_company
 from business_contexts.domain.commands.company import (
     CreateCompany,
-    UpdateCompany,
     DeleteCompany,
+    UpdateCompany,
 )
 from business_contexts.domain.excecoes import (
     CompanyAlreadyRegistered,
     CompanyNotFound,
 )
+from messagebus.bootstrap import bootstrap
+from messagebus.unity_of_work import UnitOfWork
 
 
 def _create_company_cmd(legal_name: str, **overrides) -> CreateCompany:
@@ -104,9 +104,7 @@ class TestUpdateCompany:
         await bus.handle(_create_company_cmd("Old Name"))
 
         bus2 = bootstrap(raise_event_errors=True)
-        await bus2.handle(
-            UpdateCompany(legal_name="Old Name", new_legal_name="New Name")
-        )
+        await bus2.handle(UpdateCompany(legal_name="Old Name", new_legal_name="New Name"))
 
         uow = UnitOfWork()
         companies = await view_company(uow, "New Name")

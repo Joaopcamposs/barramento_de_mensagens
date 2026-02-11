@@ -1,18 +1,18 @@
 """Mapeamento ORM da tabela user."""
 
 from sqlalchemy import (
-    Table,
-    Column,
-    String,
     UUID,
-    ForeignKey,
     Boolean,
+    Column,
+    ForeignKey,
     Index,
-    text,
     LargeBinary,
+    String,
+    Table,
+    text,
 )
 
-from business_contexts.domain.aggregate.user import User, PublicUser
+from business_contexts.domain.aggregate.user import PublicUser, User
 from infra.database import mapper_registry
 
 user = Table(

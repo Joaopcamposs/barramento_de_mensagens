@@ -1,6 +1,7 @@
 """Módulo de exceções de domínio."""
 
 from dataclasses import dataclass
+
 from fastapi import HTTPException
 
 

@@ -4,20 +4,20 @@ from uuid import UUID
 
 import pytest
 
-from messagebus.bootstrap import bootstrap
-from messagebus.unity_of_work import UnitOfWork
 from business_contexts.adapters.views.company import view_company
 from business_contexts.adapters.views.user import view_user
 from business_contexts.domain.commands.company import CreateCompany
 from business_contexts.domain.commands.user import (
     CreateUser,
-    UpdateUser,
     DeleteUser,
+    UpdateUser,
 )
 from business_contexts.domain.excecoes import (
     UserAlreadyRegistered,
     UserNotFound,
 )
+from messagebus.bootstrap import bootstrap
+from messagebus.unity_of_work import UnitOfWork
 
 
 async def _create_company(legal_name: str = "Test Company", **overrides) -> UUID:
@@ -271,9 +271,7 @@ class TestViewUser:
         """Verifica que consultar sem email retorna todos os usuários da empresa."""
         company_id = await _create_company()
         bus = bootstrap(raise_event_errors=True)
-        await bus.handle(
-            _create_user_cmd(company_id, "a@example.com", cpf="11111111111")
-        )
+        await bus.handle(_create_user_cmd(company_id, "a@example.com", cpf="11111111111"))
         bus2 = bootstrap(raise_event_errors=True)
         await bus2.handle(
             _create_user_cmd(company_id, "b@example.com", cpf="22222222222")
@@ -401,9 +399,7 @@ class TestFullAPIFlow:
             _create_user_cmd(company_a, "alice@alpha.com", cpf="11111111111")
         )
         bus2 = bootstrap(raise_event_errors=True)
-        await bus2.handle(
-            _create_user_cmd(company_a, "bob@alpha.com", cpf="22222222222")
-        )
+        await bus2.handle(_create_user_cmd(company_a, "bob@alpha.com", cpf="22222222222"))
         bus3 = bootstrap(raise_event_errors=True)
         await bus3.handle(
             _create_user_cmd(company_b, "charlie@beta.com", cpf="33333333333")

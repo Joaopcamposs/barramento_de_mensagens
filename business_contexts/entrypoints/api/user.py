@@ -2,11 +2,8 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, Depends, status
 
-from business_contexts.services.handlers.security import get_current_user, current_user
-from messagebus.bootstrap import bootstrap
-from messagebus.unity_of_work import UnitOfWork
 from business_contexts.adapters.views.user import view_user
 from business_contexts.domain.commands.user import (
     CreateUser,
@@ -18,10 +15,11 @@ from business_contexts.entrypoints.schemas.user import (
     ReadUserSchema,
     UpdateUserSchema,
 )
+from business_contexts.services.handlers.security import current_user, get_current_user
+from messagebus.bootstrap import bootstrap
+from messagebus.unity_of_work import UnitOfWork
 
-router = APIRouter(
-    prefix="/v1", tags=["Users"], dependencies=[Depends(get_current_user)]
-)
+router = APIRouter(prefix="/v1", tags=["Users"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/user", response_model=UUID, status_code=status.HTTP_201_CREATED)

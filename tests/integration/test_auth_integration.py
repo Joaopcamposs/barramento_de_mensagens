@@ -1,12 +1,12 @@
 """Testes de integração para o fluxo real de cadastro e autenticação."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import jwt
 import pytest
 
-from business_contexts.consts import SECRET_KEY, ALGORITHM
+from business_contexts.consts import ALGORITHM, SECRET_KEY
 from business_contexts.domain.commands.company import CreateCompany
 from business_contexts.domain.commands.security import AuthenticateUser
 from business_contexts.domain.excecoes import CredentialsException
@@ -172,8 +172,8 @@ class TestTokenValidation:
         token = await _authenticate("tokenexp@test.com", "secret123")
         payload = jwt.decode(token.access_token, SECRET_KEY, algorithms=[ALGORITHM])
 
-        exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
-        now = datetime.now(tz=timezone.utc)
+        exp = datetime.fromtimestamp(payload["exp"], tz=UTC)
+        now = datetime.now(tz=UTC)
         assert exp > now
 
     async def test_token_is_not_immediately_expired(self, engine) -> None:
@@ -217,20 +217,18 @@ class TestGetCurrentUser:
         expired_payload = {
             "email": "test@test.com",
             "id_empresa": "some-uuid",
-            "exp": datetime.now(tz=timezone.utc) - timedelta(hours=1),
+            "exp": datetime.now(tz=UTC) - timedelta(hours=1),
         }
         expired_token = jwt.encode(expired_payload, SECRET_KEY, algorithm=ALGORITHM)
 
         with pytest.raises(CredentialsException):
             await get_current_user(expired_token)
 
-    async def test_token_without_email_raises_credentials_exception(
-        self, engine
-    ) -> None:
+    async def test_token_without_email_raises_credentials_exception(self, engine) -> None:
         """Verifica que token sem claim de email lança CredentialsException."""
         payload = {
             "id_empresa": "some-uuid",
-            "exp": datetime.now(tz=timezone.utc) + timedelta(hours=1),
+            "exp": datetime.now(tz=UTC) + timedelta(hours=1),
         }
         token_str = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -244,7 +242,7 @@ class TestGetCurrentUser:
         payload = {
             "email": "test@test.com",
             "id_empresa": "some-uuid",
-            "exp": datetime.now(tz=timezone.utc) + timedelta(hours=1),
+            "exp": datetime.now(tz=UTC) + timedelta(hours=1),
         }
         token_str = jwt.encode(payload, "other_secret", algorithm="HS384")
 

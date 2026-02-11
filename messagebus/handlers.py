@@ -1,49 +1,49 @@
 """Módulo de registro de handlers de comandos e eventos."""
 
-from business_contexts.domain.commands.security import AuthenticateUser
-from business_contexts.services.handlers.security import authenticate_user
-from messagebus.messagebus import CommandHandlers, EventHandlers
 from business_contexts.domain.commands.company import (
     CreateCompany,
-    UpdateCompany,
     DeleteCompany,
+    UpdateCompany,
 )
+from business_contexts.domain.commands.security import AuthenticateUser
 from business_contexts.domain.commands.user import (
     CreateUser,
-    UpdateUser,
     DeleteUser,
+    UpdateUser,
 )
 from business_contexts.domain.events.company import (
     CompanyCreated,
-    CompanyUpdated,
     CompanyDeleted,
+    CompanyUpdated,
 )
 from business_contexts.domain.events.user import (
-    UserCreated,
-    UserUpdated,
-    UserDeleted,
-    TimeToCreateInitialCompanyUser,
     TimeToCreateCompanyAdminUser,
+    TimeToCreateInitialCompanyUser,
+    UserCreated,
+    UserDeleted,
+    UserUpdated,
 )
 from business_contexts.services.handlers.company import (
-    create_company,
-    update_company,
-    delete_company,
     company_created,
-    company_updated,
     company_deleted,
+    company_updated,
+    create_company,
+    delete_company,
+    update_company,
 )
+from business_contexts.services.handlers.security import authenticate_user
 from business_contexts.services.handlers.user import (
-    create_user,
-    update_user,
-    delete_user,
-    user_created,
-    user_updated,
-    user_deleted,
     create_public_user,
+    create_user,
+    delete_user,
     remove_public_user,
     update_public_user,
+    update_user,
+    user_created,
+    user_deleted,
+    user_updated,
 )
+from messagebus.messagebus import CommandHandlers, EventHandlers
 
 COMMAND_HANDLERS: CommandHandlers = CommandHandlers(
     {

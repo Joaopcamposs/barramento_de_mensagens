@@ -1,10 +1,10 @@
 """Módulo de views de consulta de User."""
 
-from messagebus.domains import Domain
 from business_contexts.adapters.repository.view_repo.user import (
     UserViewRepo,
 )
 from business_contexts.domain.entitites.user import User
+from messagebus.domains import Domain
 from messagebus.unity_of_work import UnitOfWork
 
 

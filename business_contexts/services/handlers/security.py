@@ -9,7 +9,7 @@ from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
 
 from business_contexts.adapters.repository.view_repo.user import UserViewRepo
-from business_contexts.consts import oauth2_scheme, SECRET_KEY, ALGORITHM
+from business_contexts.consts import ALGORITHM, SECRET_KEY, oauth2_scheme
 from business_contexts.domain.commands.security import AuthenticateUser
 from business_contexts.domain.entitites.user import User
 from business_contexts.domain.excecoes import CredentialsException

@@ -4,7 +4,7 @@ import hashlib
 import os
 from abc import ABC
 from dataclasses import dataclass, field
-from datetime import timedelta, datetime, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -13,14 +13,13 @@ import bcrypt
 import jwt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from pydantic import BaseModel
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from business_contexts.consts import (
-    AES_KEY,
-    SECRET_KEY,
-    ALGORITHM,
     ACCESS_TOKEN_EXPIRE_MINUTES,
+    AES_KEY,
+    ALGORITHM,
+    SECRET_KEY,
 )
 from business_contexts.entrypoints.schemas.security import Token
 
@@ -146,11 +145,9 @@ class UserSecurity:
             "email": self.decrypt_email(encrypted_email),
             "id_empresa": str(company_id),
         }
-        expire = datetime.now(tz=timezone.utc) + timedelta(
-            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-        )
+        expire = datetime.now(tz=UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         if expires_delta:
-            expire = datetime.now(tz=timezone.utc) + expires_delta
+            expire = datetime.now(tz=UTC) + expires_delta
         data_to_encode.update({"exp": expire})
         encoded_jwt = jwt.encode(data_to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return Token(access_token=encoded_jwt, token_type="bearer")

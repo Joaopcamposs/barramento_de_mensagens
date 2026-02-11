@@ -6,17 +6,17 @@ from uuid import UUID
 import uuid7
 
 from business_contexts.consts import ADMIN_USER_PREFIX
+from business_contexts.domain.events.company import (
+    CompanyCreated,
+    CompanyDeleted,
+    CompanyUpdated,
+)
 from business_contexts.domain.events.user import (
-    TimeToCreateInitialCompanyUser,
     TimeToCreateCompanyAdminUser,
+    TimeToCreateInitialCompanyUser,
 )
 from libs.basic_types import Email
 from messagebus.entities import Aggregate, OperationType
-from business_contexts.domain.events.company import (
-    CompanyCreated,
-    CompanyUpdated,
-    CompanyDeleted,
-)
 
 
 @dataclass(kw_only=True)
@@ -119,7 +119,7 @@ class Company(Aggregate):
             )
         )
         if self._first_company_id is None:
-            admin_user_email = Email(f"{ADMIN_USER_PREFIX}@{str(self.id)}.com")
+            admin_user_email = Email(f"{ADMIN_USER_PREFIX}@{self.id!s}.com")
             self.add_event(
                 TimeToCreateCompanyAdminUser(company=self.id, email=admin_user_email)
             )

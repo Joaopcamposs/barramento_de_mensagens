@@ -1,13 +1,13 @@
 """Módulo principal da aplicação FastAPI."""
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
 from business_contexts.entrypoints.api.company import router as company_router
-from business_contexts.entrypoints.api.user import router as user_router
 from business_contexts.entrypoints.api.security import security_router
+from business_contexts.entrypoints.api.user import router as user_router
 
 
 @asynccontextmanager

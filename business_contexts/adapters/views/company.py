@@ -1,10 +1,10 @@
 """Módulo de views de consulta de Company."""
 
-from messagebus.domains import Domain
 from business_contexts.adapters.repository.view_repo.company import (
     CompanyViewRepo,
 )
 from business_contexts.domain.entitites.company import Company
+from messagebus.domains import Domain
 from messagebus.unity_of_work import UnitOfWork
 
 

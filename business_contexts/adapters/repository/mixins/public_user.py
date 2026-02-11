@@ -3,7 +3,7 @@
 from abc import ABC
 from uuid import UUID
 
-from sqlalchemy import insert, update, select
+from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from business_contexts.domain.aggregate.user import PublicUser
@@ -75,9 +75,7 @@ class PublicUserMixin(ABC):
                 operation = insert(PublicUser).values(data)
             case OperationType.UPDATE:
                 operation = (
-                    update(PublicUser)
-                    .where(PublicUser.id == public_user.id)
-                    .values(data)
+                    update(PublicUser).where(PublicUser.id == public_user.id).values(data)
                 )
             case _:
                 raise ValueError("Unsupported operation type for domain repository.")
