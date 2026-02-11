@@ -4,6 +4,7 @@ from uuid import UUID
 
 import uuid7
 
+from business_contexts.adapters.orm import start_mappers
 from business_contexts.consts import (
     FIRST_USER_EMAIL,
     FIRST_USER_PASSWORD,
@@ -55,6 +56,7 @@ async def create_first_company_and_user() -> None:
                 should_create_user=True,
             )
         )
+        start_mappers()
     except Exception as error:
         await delete_schema(str(company_id))
         logger.error(
