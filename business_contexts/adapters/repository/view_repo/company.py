@@ -10,23 +10,27 @@ from business_contexts.domain.entitites.company import Company
 class CompanyViewRepo(ViewRepository):
     """Repositório de consulta para Company."""
 
-    async def get_by_name(
-        self, name: str, include_deleted: bool = False
+    async def get_by_legal_name(
+        self, legal_name: str, include_deleted: bool = False
     ) -> Company | None:
         """
-        Busca uma empresa pelo nome (somente leitura).
+        Busca uma empresa pela razão social (somente leitura).
 
         Args:
-            name: Nome da empresa.
+            legal_name: Razão social da empresa.
             include_deleted: Se True, inclui empresas deletadas.
 
         Returns:
             Entidade Company ou None se não encontrada.
         """
         async with self.session as session:
-            query = select(CompanyAggregate).where(CompanyAggregate.name == name)
+            query = select(CompanyAggregate).where(
+                CompanyAggregate.legal_name == legal_name
+            )
             if not include_deleted:
-                query = query.where(CompanyAggregate.deleted == False)
+                query = query.where(
+                    CompanyAggregate.deleted == False  # noqa: E712
+                )
 
             company = (await session.execute(query)).scalar_one_or_none()
             if not company:
@@ -34,7 +38,13 @@ class CompanyViewRepo(ViewRepository):
 
             entity = Company(
                 id=company.id,
-                name=company.name,
+                legal_name=company.legal_name,
+                trade_name=company.trade_name,
+                responsible_name=company.responsible_name,
+                email=company.email,
+                cpf=company.cpf,
+                cnpj=company.cnpj,
+                active=company.active,
                 deleted=company.deleted,
             )
 
@@ -53,7 +63,9 @@ class CompanyViewRepo(ViewRepository):
         async with self.session as session:
             query = select(CompanyAggregate)
             if not include_deleted:
-                query = query.where(CompanyAggregate.deleted == False)
+                query = query.where(
+                    CompanyAggregate.deleted == False  # noqa: E712
+                )
 
             companies = (await session.execute(query)).scalars()
             if not companies:
@@ -62,7 +74,13 @@ class CompanyViewRepo(ViewRepository):
             return [
                 Company(
                     id=company.id,
-                    name=company.name,
+                    legal_name=company.legal_name,
+                    trade_name=company.trade_name,
+                    responsible_name=company.responsible_name,
+                    email=company.email,
+                    cpf=company.cpf,
+                    cnpj=company.cnpj,
+                    active=company.active,
                     deleted=company.deleted,
                 )
                 for company in companies

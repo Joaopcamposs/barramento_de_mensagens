@@ -5,20 +5,16 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
-from business_contexts.adapters.orm import start_mappers
 from business_contexts.entrypoints.api.company import router as company_router
 from business_contexts.entrypoints.api.user import router as user_router
-from infra.database import get_async_sql_engine, mapper_registry
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Gerencia o ciclo de vida da aplicação: cria tabelas e inicializa mappers."""
-    engine = get_async_sql_engine()
-    async with engine.begin() as conn:
-        await conn.run_sync(mapper_registry.metadata.create_all)
+    """Cria a primeira empresa e usuário do sistema, se ainda não existirem."""
+    from infra.database.initializers import create_first_company_and_user
 
-    start_mappers()
+    await create_first_company_and_user()
     yield
 
 

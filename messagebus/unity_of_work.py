@@ -7,6 +7,7 @@ from collections.abc import Generator
 from typing import Any, Generic, TypeVar, TYPE_CHECKING
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from infra.database.schema_handlers import create_full_schema_within_transaction
 from messagebus.entities import UserBase, DomainRepository, ViewRepository
 from infra.database import DEFAULT_ASYNC_SQL_SESSION_FACTORY
 
@@ -21,6 +22,12 @@ class UnitOfWorkContextAlreadyOpen(Exception):
     pass
 
 
+class UnitOfWorkWithProblem(Exception):
+    """Exceção lançada ao tentar abrir um contexto de UoW com usuario não pertencendo ao schema."""
+
+    pass
+
+
 class AbstractUnitOfWork(ABC):
     """Interface abstrata do Unit of Work."""
 
@@ -30,14 +37,28 @@ class AbstractUnitOfWork(ABC):
     committed: bool
     session: AsyncSession | None
     user: UserBase | None
+    schema: str | None
+    create_schema: bool = False
 
     def __init__(
         self,
         session_factory: AsyncSession = DEFAULT_ASYNC_SQL_SESSION_FACTORY,
         user: UserBase | None = None,
+        schema: str | None = None,
+        create_schema: bool = False,
     ) -> None:
+        if (
+            (user and user.company)
+            and schema
+            and str(user.company) != str(schema)
+            and not create_schema
+        ):
+            raise UnitOfWorkWithProblem("The user does not belong to this schema.")
+
         self.sql_session_factory = session_factory or DEFAULT_ASYNC_SQL_SESSION_FACTORY
         self.user = user
+        self.schema = schema
+        self.create_schema = create_schema
         self._active_context = False
 
     def __call__(
@@ -114,22 +135,32 @@ class UnitOfWork(AbstractUnitOfWork, Generic[WRITE_REPO, READ_REPO]):
     def __init__(
         self,
         user: UserBase | None = None,
+        schema: str | None = None,
+        create_schema: bool = False,
         read_only: bool = False,
     ) -> None:
         self.read_only = read_only
 
-        super().__init__(
-            user=user,
-        )
+        super().__init__(user=user, schema=schema, create_schema=create_schema)
 
     async def __aenter__(self) -> UnitOfWork:
         """Entra no contexto, criando sessões de leitura e escrita."""
         self.committed = False
 
-        self.session = await self.sql_session_factory(
-            read_only=False,
+        if self.create_schema:  # type: ignore[has-type]
+            self.session = await create_full_schema_within_transaction(
+                session_factory=self.sql_session_factory,
+                schema_id=self.schema,
+            )
+            self.create_schema = False
+        else:
+            self.session = await self.sql_session_factory(
+                read_only=False,
+                schema=self.schema,
+            )
+        self.read_session = await self.sql_session_factory(
+            read_only=True, schema=self.schema
         )
-        self.read_session = await self.sql_session_factory(read_only=True)
 
         if not self.read_only and self.domain_repo:
             self.domain_repo = self.domain_repo(self.session)

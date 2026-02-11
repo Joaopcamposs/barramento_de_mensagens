@@ -9,5 +9,11 @@ class Company:
     """Entidade de leitura que representa uma empresa."""
 
     id: UUID
-    name: str
+    legal_name: str
+    responsible_name: str
+    email: str
+    cpf: str
+    active: bool
     deleted: bool
+    trade_name: str | None = None
+    cnpj: str | None = None

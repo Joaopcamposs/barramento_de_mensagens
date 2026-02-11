@@ -5,7 +5,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from sqlalchemy import NullPool
+from sqlalchemy import NullPool, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     AsyncEngine,
@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from business_contexts.consts import DB_HOST, DB_PASSWORD, DB_USER, DB_NAME
+from messagebus.entities import UserSecurity
 
 mapper_registry = registry()
 
@@ -41,6 +42,11 @@ def get_database_uri(is_test: bool = False) -> str:
     database_uri = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}"
 
     return database_uri
+
+
+async def set_schema_name(session: AsyncSession, schema: str) -> None:
+    await session.execute(text(f'SET search_path TO "{schema}"'))
+    setattr(session, "schema", str(schema))
 
 
 def get_async_sql_engine(
@@ -82,6 +88,7 @@ def get_async_sql_engine(
 
 async def DEFAULT_ASYNC_SQL_SESSION_FACTORY(
     read_only: bool,
+    schema: str | None = None,
     isolation_level: str = "READ COMMITTED",
     force_create_engine: bool = False,
 ) -> AsyncSession:
@@ -103,7 +110,9 @@ async def DEFAULT_ASYNC_SQL_SESSION_FACTORY(
         isolation_level=isolation_level, force_create_engine=force_create_engine
     )
 
-    execution_options: dict[str, str] = {}
+    schema_in_use = schema or "public"
+    execution_options = dict(schema_translate_map={None: schema_in_use})
+
     if read_only:
         execution_options["isolation_level"] = "AUTOCOMMIT"
 
@@ -112,6 +121,7 @@ async def DEFAULT_ASYNC_SQL_SESSION_FACTORY(
         autoflush=True,
         expire_on_commit=False,
     )
+    await set_schema_name(session, schema_in_use)
 
     async def async_close() -> None:
         await session.close()
@@ -122,7 +132,9 @@ async def DEFAULT_ASYNC_SQL_SESSION_FACTORY(
 
 
 @asynccontextmanager
-async def get_session(read_only: bool) -> AsyncGenerator[AsyncSession, None]:
+async def get_session(
+    read_only: bool, schema: str = "public"
+) -> AsyncGenerator[AsyncSession, None]:
     """
     Gerenciador de contexto para criar e fechar sessões automaticamente.
 
@@ -135,9 +147,46 @@ async def get_session(read_only: bool) -> AsyncGenerator[AsyncSession, None]:
         Sessão assíncrona do SQLAlchemy.
     """
     session = await DEFAULT_ASYNC_SQL_SESSION_FACTORY(
-        read_only=read_only,
+        read_only=read_only, schema=schema
     )
     try:
         yield session
     finally:
         await session.close()
+
+
+SCHEMAS_TO_NOT_LIST: tuple[str, ...] = (
+    "public",
+    "information_schema",
+    "pg_catalog",
+    "pg_toast",
+)
+
+
+async def list_existing_schemas() -> list[str]:
+    async with get_async_sql_engine().begin() as conn:
+        result = await conn.execute(
+            text("SELECT schema_name FROM information_schema.schemata")
+        )
+        return [row[0] for row in result if row[0] not in SCHEMAS_TO_NOT_LIST]
+
+
+async def delete_schema(schema_id: str) -> None:
+    async with get_async_sql_engine().begin() as conn:
+        await conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema_id}" CASCADE;'))
+
+
+async def validate_company_email(email: str) -> None:
+    """
+    Percorre a tabela public.usuario_publico e verifica se o hash do email
+    é igual a algum existente.
+    """
+    email_hash = UserSecurity.hash_email(email)
+    async with get_async_sql_engine().begin() as conn:
+        result = await conn.execute(
+            text(
+                f"SELECT email_hash FROM public.usuario_publico WHERE email_hash = '{email_hash}'"
+            )
+        )
+        if result.fetchone():
+            raise ValueError(f"Email {email} já existe em outra empresa!")
