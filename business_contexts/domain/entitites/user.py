@@ -17,3 +17,14 @@ class User(UserSecurity):
     active: bool
     admin: bool
     deleted: bool
+
+
+@dataclass(kw_only=True)
+class PublicUser(UserSecurity):
+    """Entidade de leitura que representa um usuário público (dados criptografados)."""
+
+    id: UUID
+    company: UUID
+    active: bool
+    email_encrypted: bytes
+    email_hash: str

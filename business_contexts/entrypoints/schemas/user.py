@@ -8,7 +8,6 @@ from pydantic import BaseModel
 class CreateUserSchema(BaseModel):
     """Schema para criação de usuário."""
 
-    company: UUID
     email: str
     password: str
     cpf: str
@@ -19,7 +18,6 @@ class CreateUserSchema(BaseModel):
 class UpdateUserSchema(BaseModel):
     """Schema para atualização de usuário."""
 
-    company: UUID
     email: str
     new_email: str | None = None
     new_password: str | None = None

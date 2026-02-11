@@ -1,6 +1,6 @@
 # Barramento de Mensagens
 
-Barramento de mensagens (comandos e eventos) para integração entre contextos de negócio, implementado com **Python 3.11**, **FastAPI**, **SQLAlchemy** (async) e **PostgreSQL**. Segue os padrões de **Domain-Driven Design (DDD)**, **CQRS** e **Event-Driven Architecture**.
+Barramento de mensagens (comandos e eventos) para integração entre contextos de negócio, implementado com **Python 3.11**, **FastAPI**, **SQLAlchemy** (async) e **PostgreSQL**. Segue os padrões de **Domain-Driven Design (DDD)**, **CQRS** e **Event-Driven Architecture**. Inclui autenticação via **JWT** com criptografia **AES-GCM** para dados sensíveis e **bcrypt** para senhas.
 
 ---
 
@@ -14,6 +14,7 @@ Barramento de mensagens (comandos e eventos) para integração entre contextos d
 - [Configuração](#configuração)
 - [Como executar](#como-executar)
 - [Testes](#testes)
+- [Autenticação e Segurança](#autenticação-e-segurança)
 - [Endpoints da API](#endpoints-da-api)
 - [Como adicionar um novo domínio](#como-adicionar-um-novo-domínio)
 - [Tecnologias](#tecnologias)
@@ -60,30 +61,31 @@ barramento_de_mensagens/
 │   ├── messagebus.py              # MessageBus, Command, Event
 │   ├── bootstrap.py               # Bootstrap com injeção de dependências
 │   ├── unity_of_work.py           # Unit of Work (abstrato e concreto)
-│   ├── entities.py                # Aggregate, Repositories base, UserBase
+│   ├── entities.py                # Aggregate, Repositories base, UserBase, UserSecurity
 │   ├── domains.py                 # Enum de domínios e seus repositórios
 │   └── handlers.py                # Registro global de command/event handlers
 │
 ├── business_contexts/             # Contexto de negócio (exemplo)
 │   ├── main.py                    # App FastAPI (lifespan, routers)
-│   ├── consts.py                  # Variáveis de ambiente
+│   ├── consts.py                  # Variáveis de ambiente e configurações de segurança
 │   ├── domain/
-│   │   ├── aggregate/             # Agregados (Company, User)
-│   │   ├── commands/              # Comandos (Create, Update, Delete)
+│   │   ├── aggregate/             # Agregados (Company, User, PublicUser)
+│   │   ├── commands/              # Comandos (Create, Update, Delete, AuthenticateUser)
 │   │   ├── events/                # Eventos (Created, Updated, Deleted)
-│   │   ├── entitites/             # Entidades de leitura (frozen dataclasses)
+│   │   ├── entitites/             # Entidades de leitura (User, PublicUser)
 │   │   └── excecoes.py            # Exceções de domínio (HTTPException)
 │   ├── adapters/
-│   │   ├── orm/                   # Mapeamento imperativo SQLAlchemy
+│   │   ├── orm/                   # Mapeamento imperativo SQLAlchemy (user, public_user, company)
 │   │   ├── repository/
 │   │   │   ├── domain_repo/       # Repositórios de escrita
-│   │   │   └── view_repo/         # Repositórios de leitura
+│   │   │   ├── view_repo/         # Repositórios de leitura
+│   │   │   └── mixins/            # Mixins de repositório (PublicUserMixin)
 │   │   └── views/                 # Views (consultas via UoW)
 │   ├── entrypoints/
-│   │   ├── api/                   # Routers FastAPI (Company, User)
-│   │   └── schemas/               # Schemas Pydantic (request/response)
+│   │   ├── api/                   # Routers FastAPI (Company, User, Security)
+│   │   └── schemas/               # Schemas Pydantic (request/response, Token)
 │   └── services/
-│       └── handlers/              # Handlers de comandos e eventos
+│       └── handlers/              # Handlers de comandos, eventos e segurança
 │
 ├── infra/
 │   └── database/                  # Engine, session factory, mapper registry
@@ -127,9 +129,25 @@ barramento_de_mensagens/
 - **Comandos**: `CreateUser`, `UpdateUser`, `DeleteUser`.
 - **Eventos**: `UserCreated`, `UserUpdated`, `UserDeleted`, `TimeToCreateInitialCompanyUser`, `TimeToCreateCompanyAdminUser`.
 - **API REST**: CRUD completo via endpoints `/v1/user`.
-- **Regra de consulta**: `company` é obrigatório em todas as consultas de usuário — somente usuários da empresa informada são retornados.
 - **Validações**: email único (409), usuário não encontrado (404).
 - **Relacionamento**: FK para `company`.
+- **Senha hasheada**: `bcrypt` com salt automático na criação do agregado.
+
+#### PublicUser (Usuário Público)
+- **Agregado** com campos: `email_encrypted`, `email_hash`, `password_hash`, `active`.
+- **Tabela no schema `public`**: dados criptografados para autenticação cross-tenant.
+- **Operações**: `register`, `update`, `remove` — sincronizadas automaticamente via eventos do User.
+- **Criptografia AES-GCM** para email, **SHA-256** para hash de busca.
+- **Ciclo de vida automático**: `UserCreated` → `create_public_user`, `UserUpdated` → `update_public_user`, `UserDeleted` → `remove_public_user`.
+
+#### Autenticação e Segurança
+- **JWT (JSON Web Token)** via `PyJWT` com configuração de `SECRET_KEY`, `ALGORITHM` e `ACCESS_TOKEN_EXPIRE_MINUTES`.
+- **OAuth2** com `OAuth2PasswordBearer` e endpoint `/api/token`.
+- **Comando**: `AuthenticateUser` — autentica via usuário público (email hash + bcrypt).
+- **Middleware**: `get_current_user` — decodifica o token JWT e carrega o usuário autenticado via `ContextVar`.
+- **Endpoint** `/api/user/me/` — retorna os dados do usuário autenticado.
+- **Exceção**: `CredentialsException` (401) para tokens inválidos ou usuários não encontrados.
+- **Rotas protegidas**: endpoints de Company e User exigem autenticação via `Depends(get_current_user)`.
 
 ### Infraestrutura
 - **PostgreSQL 16** via Docker.
@@ -139,7 +157,7 @@ barramento_de_mensagens/
 - **UUID7** para geração de IDs ordenáveis.
 
 ### Testes
-- **Unitários** (80 testes): agregados, comandos, eventos, entidades, schemas, MessageBus com fake UoW.
+- **Unitários** (112 testes): agregados (User, PublicUser), comandos, eventos, entidades, schemas, MessageBus com fake UoW, UserSecurity (encrypt/decrypt/hash), exceções de domínio, schemas de segurança (Token, TokenData), comando AuthenticateUser.
 - **Integração** (39 testes): fluxo completo (create → view → update → delete) com PostgreSQL de teste, incluindo fluxo empresa → usuários, isolamento multi-empresa e ciclo de vida completo.
 - **Fixtures**: engine com criação de tabelas e limpeza de dados entre testes (per-test scope para evitar problemas de event loop).
 
@@ -187,6 +205,15 @@ DB_HOST=localhost
 DB_PASSWORD=password
 DB_USER=postgres
 DB_NAME=postgres
+FIRST_COMPANY_ID=<uuid>
+FIRST_USER_CPF=<cpf>
+FIRST_USER_EMAIL=<email>
+FIRST_USER_PASSWORD=<password>
+ADMIN_USER_PREFIX=admin
+AES_KEY=<base64-encoded-32-byte-key>
+SECRET_KEY=<jwt-secret-key>
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
 ```
 
 > No Docker, `DB_HOST` é configurado automaticamente como `postgres` (nome do serviço).
@@ -254,8 +281,14 @@ make test-all
 |--------|------|-----------|
 | POST | `/v1/user` | Cria um usuário |
 | PUT | `/v1/user` | Atualiza um usuário |
-| GET | `/v1/user` | Lista usuários por `company` (filtro opcional por `email`) |
-| DELETE | `/v1/user` | Exclui um usuário por `company` + `email` |
+| GET | `/v1/user` | Lista usuários (filtro opcional por `email`) |
+| DELETE | `/v1/user` | Exclui um usuário por `email` |
+
+### Autenticação (`/api`)
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| POST | `/api/token` | Autentica e retorna token JWT (OAuth2) |
+| GET | `/api/user/me/` | Retorna dados do usuário autenticado |
 
 ---
 
@@ -348,6 +381,10 @@ Inclua o router em `business_contexts/main.py`.
 | **Docker** | Containerização |
 | **pytest** | Framework de testes |
 | **Ruff** | Linter e formatter |
+| **PyJWT** | Geração e validação de tokens JWT |
+| **bcrypt** | Hash de senhas |
+| **cryptography** | Criptografia AES-GCM para emails |
+| **passlib** | Contexto de criptografia de senhas |
 
 ---
 

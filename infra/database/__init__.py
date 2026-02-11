@@ -178,14 +178,14 @@ async def delete_schema(schema_id: str) -> None:
 
 async def validate_company_email(email: str) -> None:
     """
-    Percorre a tabela public.usuario_publico e verifica se o hash do email
+    Percorre a tabela public.public_user e verifica se o hash do email
     é igual a algum existente.
     """
     email_hash = UserSecurity.hash_email(email)
     async with get_async_sql_engine().begin() as conn:
         result = await conn.execute(
             text(
-                f"SELECT email_hash FROM public.usuario_publico WHERE email_hash = '{email_hash}'"
+                f"SELECT email_hash FROM public.public_user WHERE email_hash = '{email_hash}'"
             )
         )
         if result.fetchone():

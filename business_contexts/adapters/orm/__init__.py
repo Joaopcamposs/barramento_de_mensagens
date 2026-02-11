@@ -2,6 +2,7 @@
 
 from business_contexts.adapters.orm.user import user_mapper  # noqa: F401
 from business_contexts.adapters.orm.company import company_mapper  # noqa: F401
+from business_contexts.adapters.orm.user import public_user_mapper  # noqa: F401
 
 
 def start_mappers() -> None:

@@ -1,5 +1,7 @@
 """Módulo de registro de handlers de comandos e eventos."""
 
+from business_contexts.domain.commands.security import AuthenticateUser
+from business_contexts.services.handlers.security import authenticate_user
 from messagebus.messagebus import CommandHandlers, EventHandlers
 from business_contexts.domain.commands.company import (
     CreateCompany,
@@ -38,6 +40,9 @@ from business_contexts.services.handlers.user import (
     user_created,
     user_updated,
     user_deleted,
+    create_public_user,
+    remove_public_user,
+    update_public_user,
 )
 
 COMMAND_HANDLERS: CommandHandlers = CommandHandlers(
@@ -48,6 +53,7 @@ COMMAND_HANDLERS: CommandHandlers = CommandHandlers(
         CreateUser: create_user,
         UpdateUser: update_user,
         DeleteUser: delete_user,
+        AuthenticateUser: authenticate_user,
     }
 )
 
@@ -56,9 +62,9 @@ EVENT_HANDLERS: EventHandlers = EventHandlers(
         CompanyCreated: [company_created],
         CompanyUpdated: [company_updated],
         CompanyDeleted: [company_deleted],
-        UserCreated: [user_created],
-        UserUpdated: [user_updated],
-        UserDeleted: [user_deleted],
+        UserCreated: [user_created, create_public_user],
+        UserUpdated: [user_updated, update_public_user],
+        UserDeleted: [user_deleted, remove_public_user],
         TimeToCreateInitialCompanyUser: [create_user],
         TimeToCreateCompanyAdminUser: [create_user],
     }

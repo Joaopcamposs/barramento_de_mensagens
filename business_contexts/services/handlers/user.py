@@ -2,6 +2,8 @@
 
 from uuid import UUID
 
+from business_contexts.adapters.repository.view_repo.user import UserViewRepo
+from business_contexts.domain.aggregate.user import PublicUser
 from messagebus.messagebus import logger
 from messagebus.unity_of_work import UnitOfWork
 from business_contexts.adapters.repository.domain_repo.user import (
@@ -94,3 +96,56 @@ async def user_updated(event: UserUpdated, uow: UnitOfWork) -> None:
 async def user_deleted(event: UserDeleted, uow: UnitOfWork) -> None:
     """Handler para o evento de usuário excluído."""
     logger.info(f"Event UserDeleted for user {event.id} received")
+
+
+async def create_public_user(event: UserCreated, uow: UnitOfWork) -> UUID:
+    """Handler para criação do usuário público após criação do usuário privado."""
+    async with uow(Domain.user) as uow:
+        domain_repo: UserDomainRepo = uow.domain_repo
+        view_repo: UserViewRepo = uow.view_repo
+
+        user = await view_repo.get_by_id(id=event.id)
+        public_user = PublicUser.create_registration_aggregate(user=user)
+        public_user.register()
+
+        await domain_repo.add_public_user(
+            public_user=public_user,
+        )
+        await uow.commit()
+
+    return public_user.id
+
+
+async def update_public_user(event: UserUpdated, uow: UnitOfWork) -> None:
+    """Handler para atualização do usuário público após atualização do usuário privado."""
+    async with uow(Domain.user) as uow:
+        domain_repo: UserDomainRepo = uow.domain_repo
+        view_repo: UserViewRepo = uow.view_repo
+
+        private_user = await view_repo.get_by_id(id=event.id)
+
+        public_user = await domain_repo.get_public_user_by_id(id=event.id)
+        public_user.update(
+            email=private_user.email,
+            password=private_user._password_hash,
+            active=private_user.active,
+        )
+
+        await domain_repo.add_public_user(
+            public_user=public_user,
+        )
+        await uow.commit()
+
+
+async def remove_public_user(event: UserDeleted, uow: UnitOfWork) -> None:
+    """Handler para remoção (soft delete) do usuário público após exclusão do usuário privado."""
+    async with uow(Domain.user) as uow:
+        domain_repo: UserDomainRepo = uow.domain_repo
+
+        public_user = await domain_repo.get_public_user_by_id(id=event.id)
+        public_user.remove()
+
+        await domain_repo.remove_public_user(
+            public_user=public_user,
+        )
+        await uow.commit()

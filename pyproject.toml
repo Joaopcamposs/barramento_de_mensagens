@@ -17,6 +17,8 @@ dependencies = [
     "passlib>=1.7.4",
     "cryptography>=46.0.5",
     "validate-docbr>=1.11.1",
+    "pyjwt>=2.11.0",
+    "bcrypt>=5.0.0",
 ]
 
 [tool.pytest.ini_options]

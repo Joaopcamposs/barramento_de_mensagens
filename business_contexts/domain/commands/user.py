@@ -1,7 +1,6 @@
 """Módulo de comandos do domínio User."""
 
 from dataclasses import dataclass
-from uuid import UUID
 
 from messagebus.messagebus import Command
 
@@ -10,7 +9,6 @@ from messagebus.messagebus import Command
 class CreateUser(Command):
     """Comando para criar um novo usuário."""
 
-    company: UUID
     email: str
     cpf: str
     password: str

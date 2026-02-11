@@ -105,7 +105,7 @@ class CompanyDomainRepo(AbstractCompanyDomainRepo):
         Raises:
             CompanyAlreadyRegistered: Se já existe empresa com a mesma razão social.
         """
-        # await self.validate_company_email(email)
+        await self.validate_company_email(email)
 
         async with self.session as session:
             existing_company = (

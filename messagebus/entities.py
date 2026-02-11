@@ -4,16 +4,25 @@ import hashlib
 import os
 from abc import ABC
 from dataclasses import dataclass, field
+from datetime import timedelta, datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID
 
+import bcrypt
+import jwt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from pydantic import BaseModel
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from business_contexts.consts import pwd_context, AES_KEY
+from business_contexts.consts import (
+    AES_KEY,
+    SECRET_KEY,
+    ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+)
+from business_contexts.entrypoints.schemas.security import Token
 
 if TYPE_CHECKING:
     from messagebus.messagebus import Event
@@ -83,13 +92,17 @@ class UserSecurity:
 
     def verify_password(self, password: str) -> bool:
         """Verifica se a senha informada confere com o hash armazenado."""
-        passwords_match = pwd_context.verify(secret=password, hash=self._password_hash)
+        passwords_match = bcrypt.checkpw(
+            password.encode()[:72], self._password_hash.encode()
+        )
         return passwords_match
 
     @staticmethod
     def encrypt_password(password: str) -> str:
         """Criptografa a senha usando bcrypt."""
-        encrypted_password = pwd_context.hash(secret=password)
+        encrypted_password = bcrypt.hashpw(
+            password.encode()[:72], bcrypt.gensalt()
+        ).decode()
         return encrypted_password
 
     @staticmethod
@@ -111,3 +124,31 @@ class UserSecurity:
         aesgcm = AESGCM(AES_KEY)
         nonce, ct = email[:12], email[12:]
         return aesgcm.decrypt(nonce, ct, None).decode()
+
+    def generate_token(
+        self,
+        company_id: UUID,
+        encrypted_email: bytes,
+        expires_delta: timedelta | None = None,
+    ) -> Token:
+        """
+        Gera um token JWT para o usuário autenticado.
+
+        Args:
+            company_id: UUID da empresa do usuário.
+            encrypted_email: Email criptografado do usuário.
+            expires_delta: Tempo de expiração customizado (opcional).
+
+        Returns:
+            Token JWT com tipo bearer.
+        """
+        data_to_encode = {
+            "email": self.decrypt_email(encrypted_email),
+            "id_empresa": str(company_id),
+        }
+        expire = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        if expires_delta:
+            expire = datetime.now() + expires_delta
+        data_to_encode.update({"exp": expire})
+        encoded_jwt = jwt.encode(data_to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        return Token(access_token=encoded_jwt, token_type="bearer")
