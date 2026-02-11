@@ -1,6 +1,21 @@
 [project]
 name = "barramento-de-mensagens"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.0.1"
+description = "Barramento de mensagens (comandos e eventos) para integração entre microserviços"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "asyncpg>=0.31.0",
+    "fastapi[all]>=0.128.7",
+    "ruff>=0.15.0",
+    "sentry-sdk>=2.52.0",
+    "sqlalchemy>=2.0.46",
+    "uvicorn>=0.40.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "uuid7-standard>=1.1.0",
+    "greenlet>=3.3.1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]
