@@ -104,7 +104,9 @@ class TestUpdateCompany:
         await bus.handle(_create_company_cmd("Old Name"))
 
         bus2 = bootstrap(raise_event_errors=True)
-        await bus2.handle(UpdateCompany(legal_name="Old Name", new_legal_name="New Name"))
+        await bus2.handle(
+            UpdateCompany(legal_name="Old Name", new_legal_name="New Name")
+        )
 
         uow = UnitOfWork()
         companies = await view_company(uow, "New Name")

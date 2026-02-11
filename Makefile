@@ -9,6 +9,9 @@ compose:
 postgres:
 	docker-compose -f docker-compose.yml --env-file .env -p $(COMPOSE_NAME) up --build -d postgres
 
+test-env:
+	docker-compose -f docker-compose.test.yml rm && docker-compose -f docker-compose.test.yml -p $(COMPOSE_NAME)_test up
+
 test-db-up:
 	docker-compose -f docker-compose.test.yml -p $(COMPOSE_NAME)_test up -d --wait
 

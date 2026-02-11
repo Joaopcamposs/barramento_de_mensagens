@@ -173,5 +173,10 @@ class UnitOfWork(AbstractUnitOfWork, Generic[WRITE_REPO, READ_REPO]):
     async def __aexit__(  # type: ignore[override]
         self, *args: tuple[type[Exception], Exception, Exception]
     ) -> None:
-        """Sai do contexto, fazendo rollback se necessário."""
+        """Sai do contexto, fechando sessões de leitura e escrita."""
+        if hasattr(self, "read_session") and self.read_session:
+            await self.read_session.close()
+            await self.read_session.bind.dispose()
+            self.read_session = None
+
         await super().__aexit__(*args)

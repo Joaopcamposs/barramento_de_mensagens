@@ -58,9 +58,7 @@ class TestCreateUser:
         company_id = await _create_company()
         bus = bootstrap(raise_event_errors=True)
 
-        result = await bus.handle(
-            _create_user_cmd(company_id, "test@example.com")
-        )
+        result = await bus.handle(_create_user_cmd(company_id, "test@example.com"))
 
         assert isinstance(result, UUID)
 
@@ -68,14 +66,10 @@ class TestCreateUser:
         """Verifica que o usuário é persistido no banco de dados."""
         company_id = await _create_company()
         bus = bootstrap(raise_event_errors=True)
-        await bus.handle(
-            _create_user_cmd(company_id, "persist@example.com")
-        )
+        await bus.handle(_create_user_cmd(company_id, "persist@example.com"))
 
         uow = UnitOfWork()
-        users = await view_user(
-            uow, company=company_id, email="persist@example.com"
-        )
+        users = await view_user(uow, company=company_id, email="persist@example.com")
 
         assert len(users) == 1
         assert users[0].email == "persist@example.com"
@@ -97,9 +91,7 @@ class TestCreateUser:
         )
 
         uow = UnitOfWork()
-        users = await view_user(
-            uow, company=company_id, email="admin@example.com"
-        )
+        users = await view_user(uow, company=company_id, email="admin@example.com")
 
         assert len(users) == 1
         assert users[0].admin is True
@@ -109,9 +101,7 @@ class TestCreateUser:
         """Verifica que criar usuário com email duplicado lança exceção."""
         company_id = await _create_company()
         bus = bootstrap(raise_event_errors=True)
-        await bus.handle(
-            _create_user_cmd(company_id, "dup@example.com")
-        )
+        await bus.handle(_create_user_cmd(company_id, "dup@example.com"))
 
         bus2 = bootstrap(raise_event_errors=True)
         with pytest.raises(UserAlreadyRegistered):
@@ -127,9 +117,7 @@ class TestUpdateUser:
         """Verifica que a atualização altera o email do usuário."""
         company_id = await _create_company()
         bus = bootstrap(raise_event_errors=True)
-        await bus.handle(
-            _create_user_cmd(company_id, "old@example.com")
-        )
+        await bus.handle(_create_user_cmd(company_id, "old@example.com"))
 
         bus2 = bootstrap(raise_event_errors=True)
         await bus2.handle(
@@ -137,9 +125,7 @@ class TestUpdateUser:
         )
 
         uow = UnitOfWork()
-        users = await view_user(
-            uow, company=company_id, email="new@example.com"
-        )
+        users = await view_user(uow, company=company_id, email="new@example.com")
 
         assert len(users) == 1
         assert users[0].email == "new@example.com"
@@ -158,9 +144,7 @@ class TestUpdateUser:
         )
 
         uow = UnitOfWork()
-        users = await view_user(
-            uow, company=company_id, email="pwd@example.com"
-        )
+        users = await view_user(uow, company=company_id, email="pwd@example.com")
 
         assert len(users) == 1
 
@@ -169,22 +153,16 @@ class TestUpdateUser:
         company_id = await _create_company()
         bus = bootstrap(raise_event_errors=True)
         await bus.handle(
-            _create_user_cmd(
-                company_id, "flags@example.com", active=True, admin=False
-            )
+            _create_user_cmd(company_id, "flags@example.com", active=True, admin=False)
         )
 
         bus2 = bootstrap(raise_event_errors=True)
         await bus2.handle(
-            UpdateUser(
-                email="flags@example.com", new_active=False, new_admin=True
-            )
+            UpdateUser(email="flags@example.com", new_active=False, new_admin=True)
         )
 
         uow = UnitOfWork()
-        users = await view_user(
-            uow, company=company_id, email="flags@example.com"
-        )
+        users = await view_user(uow, company=company_id, email="flags@example.com")
 
         assert len(users) == 1
         assert users[0].active is False
@@ -210,26 +188,20 @@ class TestDeleteUser:
         """Verifica que a exclusão marca o usuário como deletado (soft delete)."""
         company_id = await _create_company()
         bus = bootstrap(raise_event_errors=True)
-        await bus.handle(
-            _create_user_cmd(company_id, "delete@example.com")
-        )
+        await bus.handle(_create_user_cmd(company_id, "delete@example.com"))
 
         bus2 = bootstrap(raise_event_errors=True)
         await bus2.handle(DeleteUser(email="delete@example.com"))
 
         uow = UnitOfWork()
-        users = await view_user(
-            uow, company=company_id, email="delete@example.com"
-        )
+        users = await view_user(uow, company=company_id, email="delete@example.com")
         assert users == []
 
     async def test_deleted_user_visible_with_include_deleted(self, engine) -> None:
         """Verifica que usuário deletado é visível com include_deleted=True."""
         company_id = await _create_company()
         bus = bootstrap(raise_event_errors=True)
-        await bus.handle(
-            _create_user_cmd(company_id, "soft@example.com")
-        )
+        await bus.handle(_create_user_cmd(company_id, "soft@example.com"))
 
         bus2 = bootstrap(raise_event_errors=True)
         await bus2.handle(DeleteUser(email="soft@example.com"))
@@ -257,9 +229,7 @@ class TestDeleteUser:
         """Verifica que é possível recriar usuário com mesmo email após soft delete."""
         company_id = await _create_company()
         bus = bootstrap(raise_event_errors=True)
-        await bus.handle(
-            _create_user_cmd(company_id, "recycle@example.com")
-        )
+        await bus.handle(_create_user_cmd(company_id, "recycle@example.com"))
 
         bus2 = bootstrap(raise_event_errors=True)
         await bus2.handle(DeleteUser(email="recycle@example.com"))
@@ -279,14 +249,10 @@ class TestViewUser:
         """Verifica que consultar usuário existente por email retorna dados corretos."""
         company_id = await _create_company()
         bus = bootstrap(raise_event_errors=True)
-        user_id = await bus.handle(
-            _create_user_cmd(company_id, "view@example.com")
-        )
+        user_id = await bus.handle(_create_user_cmd(company_id, "view@example.com"))
 
         uow = UnitOfWork()
-        users = await view_user(
-            uow, company=company_id, email="view@example.com"
-        )
+        users = await view_user(uow, company=company_id, email="view@example.com")
 
         assert len(users) == 1
         assert users[0].id == user_id
@@ -298,9 +264,7 @@ class TestViewUser:
         """Verifica que consultar usuário inexistente retorna lista vazia."""
         company_id = await _create_company()
         uow = UnitOfWork()
-        users = await view_user(
-            uow, company=company_id, email="nobody@example.com"
-        )
+        users = await view_user(uow, company=company_id, email="nobody@example.com")
 
         assert users == []
 
@@ -368,9 +332,7 @@ class TestViewUser:
         await bus3.handle(DeleteUser(email="deleted2@example.com"))
 
         uow = UnitOfWork()
-        users = await view_user(
-            uow, company=company_id, include_deleted=True
-        )
+        users = await view_user(uow, company=company_id, include_deleted=True)
 
         assert len(users) == 2
         emails = {u.email for u in users}
@@ -419,9 +381,7 @@ class TestFullAPIFlow:
 
         bus = bootstrap(raise_event_errors=True)
         user_id = await bus.handle(
-            _create_user_cmd(
-                company_id, "employee@flow.com", cpf="33333333333"
-            )
+            _create_user_cmd(company_id, "employee@flow.com", cpf="33333333333")
         )
 
         uow2 = UnitOfWork()
@@ -476,9 +436,7 @@ class TestFullAPIFlow:
         assert isinstance(user_id, UUID)
 
         uow = UnitOfWork()
-        users = await view_user(
-            uow, company=company_id, email="lifecycle@example.com"
-        )
+        users = await view_user(uow, company=company_id, email="lifecycle@example.com")
         assert len(users) == 1
         assert users[0].active is True
         assert users[0].admin is False
@@ -493,9 +451,7 @@ class TestFullAPIFlow:
         )
 
         uow2 = UnitOfWork()
-        users = await view_user(
-            uow2, company=company_id, email="updated@example.com"
-        )
+        users = await view_user(uow2, company=company_id, email="updated@example.com")
         assert len(users) == 1
         assert users[0].email == "updated@example.com"
         assert users[0].admin is True
@@ -504,9 +460,7 @@ class TestFullAPIFlow:
         await bus3.handle(DeleteUser(email="updated@example.com"))
 
         uow3 = UnitOfWork()
-        users = await view_user(
-            uow3, company=company_id, email="updated@example.com"
-        )
+        users = await view_user(uow3, company=company_id, email="updated@example.com")
         assert users == []
 
         uow4 = UnitOfWork()

@@ -52,10 +52,16 @@ class TestUserAggregate:
         """Verifica que cada chamada gera um ID diferente."""
         company_id = uuid7.create()
         user1 = User.create_aggregate(
-            company=company_id, email="test@example.com", cpf="12345678901", password="secret123"
+            company=company_id,
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
         user2 = User.create_aggregate(
-            company=company_id, email="test@example.com", cpf="12345678901", password="secret123"
+            company=company_id,
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
 
         assert user1.id != user2.id
@@ -63,7 +69,10 @@ class TestUserAggregate:
     def test_user_inherits_from_aggregate(self) -> None:
         """Verifica que User herda de Aggregate."""
         user = User.create_aggregate(
-            company=uuid7.create(), email="test@example.com", cpf="12345678901", password="secret123"
+            company=uuid7.create(),
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
 
         assert isinstance(user, Aggregate)
@@ -71,7 +80,10 @@ class TestUserAggregate:
     def test_create_sets_insert_operation_type(self) -> None:
         """Verifica que create() define o tipo de operação como INSERT."""
         user = User.create_aggregate(
-            company=uuid7.create(), email="test@example.com", cpf="12345678901", password="secret123"
+            company=uuid7.create(),
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
         user.create()
 
@@ -81,7 +93,10 @@ class TestUserAggregate:
         """Verifica que create() emite o evento UserCreated."""
         company_id = uuid7.create()
         user = User.create_aggregate(
-            company=company_id, email="test@example.com", cpf="12345678901", password="secret123"
+            company=company_id,
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
         user.create()
 
@@ -94,7 +109,10 @@ class TestUserAggregate:
     def test_update_sets_update_operation_type(self) -> None:
         """Verifica que update() define o tipo de operação como UPDATE."""
         user = User.create_aggregate(
-            company=uuid7.create(), email="test@example.com", cpf="12345678901", password="secret123"
+            company=uuid7.create(),
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
         user.update(email="new@example.com")
 
@@ -103,7 +121,10 @@ class TestUserAggregate:
     def test_update_changes_email(self) -> None:
         """Verifica que update() altera o email do usuário."""
         user = User.create_aggregate(
-            company=uuid7.create(), email="test@example.com", cpf="12345678901", password="secret123"
+            company=uuid7.create(),
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
         user.update(email="new@example.com")
 
@@ -112,7 +133,10 @@ class TestUserAggregate:
     def test_update_changes_password(self) -> None:
         """Verifica que update() altera a senha do usuário."""
         user = User.create_aggregate(
-            company=uuid7.create(), email="test@example.com", cpf="12345678901", password="secret123"
+            company=uuid7.create(),
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
         user.update(password="newpassword")
 
@@ -121,7 +145,11 @@ class TestUserAggregate:
     def test_update_changes_active(self) -> None:
         """Verifica que update() altera o status de ativação."""
         user = User.create_aggregate(
-            company=uuid7.create(), email="test@example.com", cpf="12345678901", password="secret123", active=True
+            company=uuid7.create(),
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
+            active=True,
         )
         user.update(active=False)
 
@@ -130,7 +158,11 @@ class TestUserAggregate:
     def test_update_changes_admin(self) -> None:
         """Verifica que update() altera o status de administrador."""
         user = User.create_aggregate(
-            company=uuid7.create(), email="test@example.com", cpf="12345678901", password="secret123", admin=False
+            company=uuid7.create(),
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
+            admin=False,
         )
         user.update(admin=True)
 
@@ -139,7 +171,10 @@ class TestUserAggregate:
     def test_update_with_none_does_not_change_fields(self) -> None:
         """Verifica que update() com None não altera os campos."""
         user = User.create_aggregate(
-            company=uuid7.create(), email="test@example.com", cpf="12345678901", password="secret123"
+            company=uuid7.create(),
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
         user.update(email=None, password=None, active=None, admin=None)
 
@@ -152,7 +187,10 @@ class TestUserAggregate:
         """Verifica que update() emite o evento UserUpdated."""
         company_id = uuid7.create()
         user = User.create_aggregate(
-            company=company_id, email="test@example.com", cpf="12345678901", password="secret123"
+            company=company_id,
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
         user.update(email="new@example.com")
 
@@ -165,7 +203,10 @@ class TestUserAggregate:
     def test_delete_sets_delete_operation_type(self) -> None:
         """Verifica que delete() define o tipo de operação como DELETE (soft delete)."""
         user = User.create_aggregate(
-            company=uuid7.create(), email="test@example.com", cpf="12345678901", password="secret123"
+            company=uuid7.create(),
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
         user.delete()
 
@@ -176,7 +217,10 @@ class TestUserAggregate:
         """Verifica que delete() emite o evento UserDeleted."""
         company_id = uuid7.create()
         user = User.create_aggregate(
-            company=company_id, email="test@example.com", cpf="12345678901", password="secret123"
+            company=company_id,
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
         user.delete()
 
@@ -189,7 +233,10 @@ class TestUserAggregate:
     def test_multiple_operations_accumulate_events(self) -> None:
         """Verifica que múltiplas operações acumulam eventos."""
         user = User.create_aggregate(
-            company=uuid7.create(), email="test@example.com", cpf="12345678901", password="secret123"
+            company=uuid7.create(),
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
         user.create()
         user.update(email="new@example.com")
@@ -201,7 +248,10 @@ class TestUserAggregate:
     def test_hash_is_based_on_id(self) -> None:
         """Verifica que o hash é baseado no ID."""
         user = User.create_aggregate(
-            company=uuid7.create(), email="test@example.com", cpf="12345678901", password="secret123"
+            company=uuid7.create(),
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
 
         assert hash(user) == hash(user.id)
@@ -474,7 +524,10 @@ class TestUserAggregateBelongsToCompany:
         """Verifica que o agregado User possui campo company obrigatório."""
         company_id = uuid7.create()
         user = User.create_aggregate(
-            company=company_id, email="test@example.com", cpf="12345678901", password="secret123"
+            company=company_id,
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
 
         assert user.company == company_id
@@ -483,7 +536,10 @@ class TestUserAggregateBelongsToCompany:
         """Verifica que o evento UserCreated carrega o ID da empresa."""
         company_id = uuid7.create()
         user = User.create_aggregate(
-            company=company_id, email="test@example.com", cpf="12345678901", password="secret123"
+            company=company_id,
+            email="test@example.com",
+            cpf="12345678901",
+            password="secret123",
         )
         user.create()
 
