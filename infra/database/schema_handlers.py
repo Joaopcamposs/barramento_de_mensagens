@@ -1,9 +1,9 @@
 """Módulo de manipulação de schemas do banco de dados multi-tenant."""
 
-from typing import Callable
+from collections.abc import Callable
 
-from sqlalchemy import text, Sequence
-from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine, AsyncConnection
+from sqlalchemy import Sequence, text
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
 from infra.database import get_async_sql_engine, mapper_registry
 

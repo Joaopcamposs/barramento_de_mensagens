@@ -6,19 +6,88 @@ requires-python = ">=3.11"
 dependencies = [
     "asyncpg>=0.31.0",
     "fastapi[all]>=0.128.7",
-    "ruff>=0.15.0",
     "sentry-sdk>=2.52.0",
     "sqlalchemy>=2.0.46",
     "uvicorn>=0.40.0",
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
     "uuid7-standard>=1.1.0",
     "greenlet>=3.3.1",
     "passlib>=1.7.4",
     "cryptography>=46.0.5",
     "validate-docbr>=1.11.1",
+    "pyjwt>=2.11.0",
+    "bcrypt>=5.0.0",
 ]
 
+[dependency-groups]
+dev = [
+    "ruff>=0.15.0",
+    "mypy>=1.14.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=6.0.0",
+    "pre-commit>=4.0.0",
+]
+
+# ── Pytest ──────────────────────────────────────────────────────────
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 pythonpath = ["."]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:passlib.*",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+    "ignore::pluggy.PluggyTeardownRaisedWarning",
+]
+addopts = "-ra -q"
+
+# ── Coverage ────────────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["business_contexts", "infra", "messagebus", "libs"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 70
+
+# ── Ruff ────────────────────────────────────────────────────────────
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "SIM",  # flake8-simplify
+    "T20",  # flake8-print
+    "RUF",  # ruff-specific rules
+    "S",    # flake8-bandit (security)
+    "ASYNC",# flake8-async
+]
+ignore = [
+    "S608",  # SQL injection (usamos queries controladas)
+    "S106",  # hardcoded password (falsos positivos em testes)
+    "S105",  # hardcoded password in variable assignment
+    "B008",  # function call in default argument (Depends do FastAPI)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "T20"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["business_contexts", "infra", "messagebus", "libs"]
+
+# ── Mypy ────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true

@@ -2,14 +2,15 @@
 
 from dataclasses import dataclass
 from uuid import UUID
+
 import uuid7
 
-from messagebus.entities import Aggregate, OperationType, UserSecurity
 from business_contexts.domain.events.user import (
     UserCreated,
-    UserUpdated,
     UserDeleted,
+    UserUpdated,
 )
+from messagebus.entities import Aggregate, OperationType, UserSecurity
 
 
 @dataclass(kw_only=True)
@@ -20,7 +21,6 @@ class User(Aggregate, UserSecurity):
     company: UUID
     email: str
     cpf: str
-    password: str
     active: bool
     admin: bool
 
@@ -50,12 +50,14 @@ class User(Aggregate, UserSecurity):
         Returns:
             Nova instância de User com ID gerado.
         """
+        hash_password = UserSecurity.encrypt_password(password)
+
         return User(
             id=uuid7.create(),
             company=company,
             email=email,
             cpf=cpf,
-            password=password,
+            _password_hash=hash_password,
             active=active,
             admin=admin,
         )
@@ -92,7 +94,7 @@ class User(Aggregate, UserSecurity):
         if email is not None:
             self.email = email
         if password is not None:
-            self.password = password
+            self._password_hash = self.encrypt_password(password)
         if active is not None:
             self.active = active
         if admin is not None:
@@ -117,3 +119,67 @@ class User(Aggregate, UserSecurity):
                 company=self.company,
             )
         )
+
+
+@dataclass(kw_only=True)
+class PublicUser(Aggregate, UserSecurity):
+    """Agregado que representa um usuário público (dados criptografados) no domínio."""
+
+    id: UUID
+    company: UUID
+    email_encrypted: bytes
+    email_hash: str
+    active: bool
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    @classmethod
+    def create_registration_aggregate(
+        cls,
+        user: User,
+    ) -> "PublicUser":
+        """
+        Cria um agregado PublicUser a partir de um usuário privado para cadastro.
+
+        Args:
+            user: Agregado User de origem.
+
+        Returns:
+            Nova instância de PublicUser com email criptografado e hash.
+        """
+        encrypted_email = cls.encrypt_email(user.email)
+        email_hash = cls.hash_email(user.email)
+
+        return PublicUser(
+            id=user.id,
+            company=user.company,
+            email_encrypted=encrypted_email,
+            email_hash=email_hash,
+            _password_hash=user.password_hash,
+            active=user.active,
+        )
+
+    def register(self) -> None:
+        """Marca o agregado para inserção no banco de dados."""
+        self._operation_type = OperationType.INSERT
+
+    def update(self, email: str, password: str, active: bool) -> None:
+        """
+        Atualiza os dados do usuário público.
+
+        Args:
+            email: Novo email (será criptografado e hasheado).
+            password: Novo hash da senha.
+            active: Novo status de ativação.
+        """
+        self._operation_type = OperationType.UPDATE
+
+        self.email_encrypted = self.encrypt_email(email)
+        self.email_hash = self.hash_email(email)
+        self._password_hash = password
+        self.active = active
+
+    def remove(self) -> None:
+        """Marca o agregado como deletado (soft delete)."""
+        self._operation_type = OperationType.DELETE

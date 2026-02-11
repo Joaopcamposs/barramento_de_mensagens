@@ -2,13 +2,14 @@
 
 import functools
 import inspect
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from messagebus.entities import UserBase
 from messagebus.messagebus import (
     Command,
-    Event,
     CommandHandlers,
+    Event,
     EventHandlers,
     MessageBus,
 )

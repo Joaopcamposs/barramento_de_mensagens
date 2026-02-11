@@ -22,6 +22,10 @@ class CreateCompany(Command):
 
     _first_company_id: UUID | None = None
 
+    @property
+    def first_company_id(self) -> UUID | None:
+        return self._first_company_id
+
 
 @dataclass
 class UpdateCompany(Command):

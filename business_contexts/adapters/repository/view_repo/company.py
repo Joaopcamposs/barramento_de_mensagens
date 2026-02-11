@@ -2,9 +2,9 @@
 
 from sqlalchemy import select
 
-from messagebus.entities import ViewRepository
 from business_contexts.domain.aggregate.company import Company as CompanyAggregate
 from business_contexts.domain.entitites.company import Company
+from messagebus.entities import ViewRepository
 
 
 class CompanyViewRepo(ViewRepository):

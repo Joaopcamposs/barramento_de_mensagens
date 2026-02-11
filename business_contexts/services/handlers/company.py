@@ -1,31 +1,32 @@
 """Módulo de handlers de comandos e eventos do domínio Company."""
 
+from typing import cast
 from uuid import UUID
 
-from infra.database import delete_schema
-from messagebus.messagebus import logger
-from messagebus.unity_of_work import UnitOfWork
 from business_contexts.adapters.repository.domain_repo.company import (
     CompanyDomainRepo,
 )
 from business_contexts.domain.commands.company import (
     CreateCompany,
-    UpdateCompany,
     DeleteCompany,
+    UpdateCompany,
 )
-from messagebus.domains import Domain
 from business_contexts.domain.events.company import (
     CompanyCreated,
-    CompanyUpdated,
     CompanyDeleted,
+    CompanyUpdated,
 )
+from infra.database import delete_schema
+from messagebus.domains import Domain
+from messagebus.messagebus import logger
+from messagebus.unity_of_work import UnitOfWork
 
 
 async def create_company(command: CreateCompany, uow: UnitOfWork) -> UUID:
     """Handler para criação de empresa."""
     try:
         async with uow(Domain.company) as uow:
-            domain_repo: CompanyDomainRepo = uow.domain_repo
+            domain_repo: CompanyDomainRepo = cast(CompanyDomainRepo, uow.domain_repo)
 
             company = await domain_repo.create_aggregate(
                 legal_name=command.legal_name,
@@ -35,10 +36,9 @@ async def create_company(command: CreateCompany, uow: UnitOfWork) -> UUID:
                 cpf=command.cpf,
                 cnpj=command.cnpj,
                 active=command.active,
-                _first_company_id=command._first_company_id,
+                _first_company_id=command.first_company_id,
             )
             company.create(
-                user_id=uow.user.id if uow.user else None,
                 password=command.password,
                 should_create_user=command.should_create_user,
             )
@@ -56,7 +56,7 @@ async def create_company(command: CreateCompany, uow: UnitOfWork) -> UUID:
 async def update_company(command: UpdateCompany, uow: UnitOfWork) -> None:
     """Handler para atualização de empresa."""
     async with uow(Domain.company) as uow:
-        domain_repo: CompanyDomainRepo = uow.domain_repo
+        domain_repo: CompanyDomainRepo = cast(CompanyDomainRepo, uow.domain_repo)
 
         company = await domain_repo.get_by_legal_name(
             legal_name=command.legal_name,
@@ -76,7 +76,7 @@ async def update_company(command: UpdateCompany, uow: UnitOfWork) -> None:
 async def delete_company(command: DeleteCompany, uow: UnitOfWork) -> None:
     """Handler para exclusão (soft delete) de empresa."""
     async with uow(Domain.company) as uow:
-        domain_repo: CompanyDomainRepo = uow.domain_repo
+        domain_repo: CompanyDomainRepo = cast(CompanyDomainRepo, uow.domain_repo)
 
         company = await domain_repo.get_by_legal_name(
             legal_name=command.legal_name,

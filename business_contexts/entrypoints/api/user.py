@@ -2,10 +2,8 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 
-from messagebus.bootstrap import bootstrap
-from messagebus.unity_of_work import UnitOfWork
 from business_contexts.adapters.views.user import view_user
 from business_contexts.domain.commands.user import (
     CreateUser,
@@ -17,17 +15,20 @@ from business_contexts.entrypoints.schemas.user import (
     ReadUserSchema,
     UpdateUserSchema,
 )
+from business_contexts.services.handlers.security import current_user, get_current_user
+from messagebus.bootstrap import bootstrap
+from messagebus.unity_of_work import UnitOfWork
 
-router = APIRouter(prefix="/v1", tags=["Users"])
+router = APIRouter(prefix="/v1", tags=["Users"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/user", response_model=UUID, status_code=status.HTTP_201_CREATED)
 async def post_user(body: CreateUserSchema) -> UUID:
     """Cria um novo usuário."""
-    bus = bootstrap(schema=str(body.company))
+    bus = bootstrap(user=current_user.get())
 
     command = CreateUser(
-        company=body.company,
+        company=current_user.get().company,
         email=body.email,
         cpf=body.cpf,
         password=body.password,
@@ -41,7 +42,7 @@ async def post_user(body: CreateUserSchema) -> UUID:
 @router.put("/user", status_code=status.HTTP_200_OK)
 async def put_user(body: UpdateUserSchema) -> None:
     """Atualiza um usuário existente."""
-    bus = bootstrap(schema=str(body.company))
+    bus = bootstrap(user=current_user.get())
 
     command = UpdateUser(
         email=body.email,
@@ -55,22 +56,19 @@ async def put_user(body: UpdateUserSchema) -> None:
 
 @router.get("/user", response_model=list[ReadUserSchema])
 async def get_user(
-    company: UUID,
     email: str | None = None,
     include_deleted: bool = False,
 ):
     """Consulta usuários de uma empresa. A empresa é obrigatória."""
-    uow = UnitOfWork(schema=str(company))
-    users = await view_user(
-        uow, company=company, email=email, include_deleted=include_deleted
-    )
+    uow = UnitOfWork(user=current_user.get())
+    users = await view_user(uow, email=email, include_deleted=include_deleted)
     return users
 
 
 @router.delete("/user", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(company: str, email: str) -> None:
+async def delete_user(email: str) -> None:
     """Exclui um usuário pelo email."""
-    bus = bootstrap(schema=str(company))
+    bus = bootstrap(user=current_user.get())
 
     command = DeleteUser(email=email)
     await bus.handle(command)

@@ -1,6 +1,6 @@
 """Mapeamento ORM da tabela company."""
 
-from sqlalchemy import Table, Column, String, UUID, Boolean, Index, text
+from sqlalchemy import UUID, Boolean, Column, Index, String, Table, text
 
 from business_contexts.domain.aggregate.company import Company
 from infra.database import mapper_registry

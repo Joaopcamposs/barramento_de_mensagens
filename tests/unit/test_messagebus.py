@@ -4,14 +4,14 @@ from dataclasses import dataclass
 
 import pytest
 
+from messagebus.entities import OperationType
 from messagebus.messagebus import (
     Command,
-    Event,
-    MessageBus,
     CommandHandlers,
+    Event,
     EventHandlers,
+    MessageBus,
 )
-from messagebus.entities import OperationType
 
 
 class FakeUnitOfWork:
@@ -61,7 +61,7 @@ class TestMessageBus:
             return f"handled: {command.value}"
 
         bus = MessageBus(
-            uow=uow,
+            uow=uow,  # type: ignore
             event_handlers=EventHandlers({}),
             command_handlers=CommandHandlers({FakeCommand: handler}),
         )
@@ -80,7 +80,7 @@ class TestMessageBus:
             results.append(f"handler2: {event.value}")
 
         bus = MessageBus(
-            uow=uow,
+            uow=uow,  # type: ignore
             event_handlers=EventHandlers({FakeEvent: [handler1, handler2]}),
             command_handlers=CommandHandlers({}),
         )
@@ -95,7 +95,7 @@ class TestMessageBus:
     ) -> None:
         """Verifica que handle() lança TypeError para mensagens desconhecidas."""
         bus = MessageBus(
-            uow=uow,
+            uow=uow,  # type: ignore
             event_handlers=EventHandlers({}),
             command_handlers=CommandHandlers({}),
         )
@@ -112,7 +112,7 @@ class TestMessageBus:
             raise ValueError("command error")
 
         bus = MessageBus(
-            uow=uow,
+            uow=uow,  # type: ignore
             event_handlers=EventHandlers({}),
             command_handlers=CommandHandlers({FakeCommand: failing_handler}),
         )
@@ -129,7 +129,7 @@ class TestMessageBus:
             raise ValueError("event error")
 
         bus = MessageBus(
-            uow=uow,
+            uow=uow,  # type: ignore
             event_handlers=EventHandlers({FakeEvent: [failing_handler]}),
             command_handlers=CommandHandlers({}),
             raise_event_errors=True,
@@ -138,9 +138,7 @@ class TestMessageBus:
         with pytest.raises(ValueError, match="event error"):
             await bus.handle(FakeEvent(value="test"))
 
-    async def test_queue_processes_events_from_command(
-        self, uow: FakeUnitOfWork
-    ) -> None:
+    async def test_queue_processes_events_from_command(self, uow: FakeUnitOfWork) -> None:
         """Verifica que eventos gerados por comandos são processados."""
         event_results: list[str] = []
 
@@ -152,7 +150,7 @@ class TestMessageBus:
             event_results.append(event.value)
 
         bus = MessageBus(
-            uow=uow,
+            uow=uow,  # type: ignore
             event_handlers=EventHandlers({FakeEvent: [event_handler]}),
             command_handlers=CommandHandlers({FakeCommand: command_handler}),
         )

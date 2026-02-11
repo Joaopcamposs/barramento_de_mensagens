@@ -6,13 +6,13 @@ import uuid7
 
 from business_contexts.adapters.orm import start_mappers
 from business_contexts.consts import (
-    FIRST_USER_EMAIL,
-    FIRST_USER_PASSWORD,
     FIRST_COMPANY_ID,
     FIRST_USER_CPF,
+    FIRST_USER_EMAIL,
+    FIRST_USER_PASSWORD,
 )
 from business_contexts.domain.commands.company import CreateCompany
-from infra.database import list_existing_schemas, delete_schema
+from infra.database import delete_schema, list_existing_schemas
 from messagebus.bootstrap import bootstrap
 from messagebus.entities import UserBase
 from messagebus.messagebus import logger
@@ -60,6 +60,6 @@ async def create_first_company_and_user() -> None:
     except Exception as error:
         await delete_schema(str(company_id))
         logger.error(
-            f"Erro ao criar empresa. O schema {str(company_id)} foi dropado: {error}"
+            f"Erro ao criar empresa. O schema {company_id!s} foi dropado: {error}"
         )
         raise error

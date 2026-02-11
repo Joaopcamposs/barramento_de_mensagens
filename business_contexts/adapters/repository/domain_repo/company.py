@@ -4,15 +4,15 @@ from abc import abstractmethod
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, insert, update
+from sqlalchemy import insert, select, update
 from sqlalchemy.sql import Executable
 
-from messagebus.entities import DomainRepository, OperationType
 from business_contexts.domain.aggregate.company import Company
 from business_contexts.domain.excecoes import (
     CompanyAlreadyRegistered,
     CompanyNotFound,
 )
+from messagebus.entities import DomainRepository, OperationType
 
 
 class AbstractCompanyDomainRepo(DomainRepository):
@@ -44,6 +44,7 @@ class AbstractCompanyDomainRepo(DomainRepository):
         Args:
             company: Agregado Company a ser removido.
         """
+        self.seen.add(company)
         await self._remove(company)
 
     @abstractmethod
@@ -105,7 +106,7 @@ class CompanyDomainRepo(AbstractCompanyDomainRepo):
         Raises:
             CompanyAlreadyRegistered: Se já existe empresa com a mesma razão social.
         """
-        # await self.validate_company_email(email)
+        await self.validate_company_email(email)
 
         async with self.session as session:
             existing_company = (
@@ -175,7 +176,7 @@ class CompanyDomainRepo(AbstractCompanyDomainRepo):
     ) -> None:
         """Persiste uma empresa no banco de dados (inserção ou atualização)."""
         data = {
-            "id": company._first_company_id or company.id,
+            "id": company.first_company_id or company.id,
             "legal_name": company.legal_name,
             "trade_name": company.trade_name,
             "responsible_name": company.responsible_name,
@@ -187,7 +188,7 @@ class CompanyDomainRepo(AbstractCompanyDomainRepo):
         }
 
         operation: Executable
-        match company._operation_type:
+        match company.operation_type:
             case OperationType.INSERT:
                 operation = insert(Company).values(data)
             case OperationType.UPDATE:

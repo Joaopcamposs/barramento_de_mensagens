@@ -1,6 +1,7 @@
 """Módulo de exceções de domínio."""
 
 from dataclasses import dataclass
+
 from fastapi import HTTPException
 
 
@@ -34,3 +35,11 @@ class CompanyNotFound(HTTPException):
 
     status_code: int = 404
     detail: str = "Company not found"
+
+
+@dataclass
+class CredentialsException(HTTPException):
+    """Exceção lançada quando as credenciais do usuário não são validadas."""
+
+    status_code: int = 401
+    detail: str = "Could not validate credentials"

@@ -4,15 +4,16 @@ from abc import abstractmethod
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, update, insert
+from sqlalchemy import insert, select, update
 from sqlalchemy.sql import Executable
 
-from messagebus.entities import DomainRepository, OperationType
+from business_contexts.adapters.repository.mixins.public_user import PublicUserMixin
 from business_contexts.domain.aggregate.user import User
 from business_contexts.domain.excecoes import (
     UserAlreadyRegistered,
     UserNotFound,
 )
+from messagebus.entities import DomainRepository, OperationType
 
 
 class AbstractUserDomainRepo(DomainRepository):
@@ -44,6 +45,7 @@ class AbstractUserDomainRepo(DomainRepository):
         Args:
             user: Agregado User a ser removido.
         """
+        self.seen.add(user)
         await self._remove(user)
 
     @abstractmethod
@@ -65,7 +67,7 @@ class AbstractUserDomainRepo(DomainRepository):
         raise NotImplementedError()
 
 
-class UserDomainRepo(AbstractUserDomainRepo):
+class UserDomainRepo(AbstractUserDomainRepo, PublicUserMixin):
     """Implementação concreta do repositório de domínio de User."""
 
     async def create_aggregate(
@@ -145,7 +147,45 @@ class UserDomainRepo(AbstractUserDomainRepo):
                 company=user.company,
                 email=user.email,
                 cpf=user.cpf,
-                password=user.password,
+                _password_hash=user.password_hash,
+                active=user.active,
+                admin=user.admin,
+                deleted=user.deleted,
+            )
+
+        return aggregate
+
+    async def get_by_id(self, id: UUID) -> User:
+        """
+        Busca um usuário pelo ID.
+
+        Args:
+            id: UUID do usuário.
+
+        Returns:
+            Agregado User encontrado.
+
+        Raises:
+            UserNotFound: Se o usuário não for encontrado.
+        """
+        async with self.session as session:
+            user = (
+                await session.execute(
+                    select(User).where(
+                        User.id == id,
+                        User.deleted == False,  # noqa: E712
+                    )
+                )
+            ).scalar_one_or_none()
+            if not user:
+                raise UserNotFound
+
+            aggregate = User(
+                id=user.id,
+                company=user.company,
+                email=user.email,
+                cpf=user.cpf,
+                _password_hash=user.password_hash,
                 active=user.active,
                 admin=user.admin,
                 deleted=user.deleted,
@@ -163,14 +203,14 @@ class UserDomainRepo(AbstractUserDomainRepo):
             "company": user.company,
             "email": user.email,
             "cpf": user.cpf,
-            "password": user.password,
+            "_password_hash": user.password_hash,
             "active": user.active,
             "admin": user.admin,
             "deleted": user.deleted,
         }
 
         operation: Executable
-        match user._operation_type:
+        match user.operation_type:
             case OperationType.INSERT:
                 operation = insert(User).values(data)
             case OperationType.UPDATE:

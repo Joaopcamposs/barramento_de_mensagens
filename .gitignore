@@ -1,5 +1,24 @@
-.idea
-.venv
+# IDE
+.idea/
+.vscode/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Env
 .env
-__pycache__
 uv.lock
+
+# Quality tools
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml

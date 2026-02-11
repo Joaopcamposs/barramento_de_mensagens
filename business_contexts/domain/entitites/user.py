@@ -3,11 +3,11 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from messagebus.entities import UserSecurity
+from messagebus.entities import UserSecurity, UserBase
 
 
 @dataclass(kw_only=True)
-class User(UserSecurity):
+class User(UserBase, UserSecurity):
     """Entidade de leitura que representa um usuário."""
 
     id: UUID
@@ -17,3 +17,14 @@ class User(UserSecurity):
     active: bool
     admin: bool
     deleted: bool
+
+
+@dataclass(kw_only=True)
+class PublicUser(UserSecurity):
+    """Entidade de leitura que representa um usuário público (dados criptografados)."""
+
+    id: UUID
+    company: UUID
+    active: bool
+    email_encrypted: bytes
+    email_hash: str

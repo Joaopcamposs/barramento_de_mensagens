@@ -6,17 +6,17 @@ from uuid import UUID
 import uuid7
 
 from business_contexts.consts import ADMIN_USER_PREFIX
-from business_contexts.domain.events.user import (
-    TimeToCreateInitialCompanyUser,
-    TimeToCreateCompanyAdminUser,
-)
-from libs.tipos_basicos import Email
-from messagebus.entities import Aggregate, OperationType
 from business_contexts.domain.events.company import (
     CompanyCreated,
-    CompanyUpdated,
     CompanyDeleted,
+    CompanyUpdated,
 )
+from business_contexts.domain.events.user import (
+    TimeToCreateCompanyAdminUser,
+    TimeToCreateInitialCompanyUser,
+)
+from libs.basic_types import Email
+from messagebus.entities import Aggregate, OperationType
 
 
 @dataclass(kw_only=True)
@@ -36,6 +36,10 @@ class Company(Aggregate):
 
     def __hash__(self) -> int:
         return hash(self.id)
+
+    @property
+    def first_company_id(self) -> UUID | None:
+        return self._first_company_id
 
     @staticmethod
     def create_aggregate(
@@ -80,7 +84,6 @@ class Company(Aggregate):
 
     def create(
         self,
-        user_id: UUID | None,
         password: str,
         should_create_user: bool = True,
     ) -> None:
@@ -119,7 +122,7 @@ class Company(Aggregate):
             )
         )
         if self._first_company_id is None:
-            admin_user_email = Email(f"{ADMIN_USER_PREFIX}@{str(self.id)}.com")
+            admin_user_email = Email(f"{ADMIN_USER_PREFIX}@{self.id!s}.com")
             self.add_event(
                 TimeToCreateCompanyAdminUser(company=self.id, email=admin_user_email)
             )

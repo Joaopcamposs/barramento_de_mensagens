@@ -1,11 +1,12 @@
 """Módulo principal da aplicação FastAPI."""
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
 from business_contexts.entrypoints.api.company import router as company_router
+from business_contexts.entrypoints.api.security import security_router
 from business_contexts.entrypoints.api.user import router as user_router
 
 
@@ -19,8 +20,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="API",
+    title="API Barramento de Mensagens",
+    description="APIs REST",
+    version="0.0.1",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
     lifespan=lifespan,
+    swagger_ui_parameters={"persistAuthorization": True},
 )
 
 
@@ -32,3 +39,4 @@ async def health_check() -> dict[str, str]:
 
 app.include_router(company_router)
 app.include_router(user_router)
+app.include_router(security_router)
