@@ -4,7 +4,7 @@ from abc import abstractmethod
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, update, insert, delete
+from sqlalchemy import select, update, insert
 from sqlalchemy.sql import Executable
 
 from messagebus.entities import DomainRepository, OperationType
@@ -90,7 +90,12 @@ class UserDomainRepo(AbstractUserDomainRepo):
         """
         async with self.session as session:
             existing_user = (
-                await session.execute(select(User).where(User.email == email))
+                await session.execute(
+                    select(User).where(
+                        User.email == email,
+                        User.deleted == False,
+                    )
+                )
             ).scalar_one_or_none()
             if existing_user:
                 raise UserAlreadyRegistered
@@ -116,7 +121,12 @@ class UserDomainRepo(AbstractUserDomainRepo):
         """
         async with self.session as session:
             user = (
-                await session.execute(select(User).where(User.email == email))
+                await session.execute(
+                    select(User).where(
+                        User.email == email,
+                        User.deleted == False,
+                    )
+                )
             ).scalar_one_or_none()
             if not user:
                 raise UserNotFound
@@ -126,6 +136,7 @@ class UserDomainRepo(AbstractUserDomainRepo):
                 company=user.company,
                 email=user.email,
                 password=user.password,
+                deleted=user.deleted,
             )
 
         return aggregate
@@ -140,6 +151,7 @@ class UserDomainRepo(AbstractUserDomainRepo):
             "company": user.company,
             "email": user.email,
             "password": user.password,
+            "deleted": user.deleted,
         }
 
         operation: Executable
@@ -154,7 +166,11 @@ class UserDomainRepo(AbstractUserDomainRepo):
         await self.session.execute(operation)
 
     async def _remove(self, user: User) -> None:
-        """Remove um usuário do banco de dados."""
-        operation = delete(User).where(User.id == user.id)
+        """Marca um usuário como deletado no banco de dados (soft delete)."""
+        operation = (
+            update(User)
+            .where(User.id == user.id)
+            .values({"deleted": True})
+        )
 
         await self.session.execute(operation)

@@ -23,3 +23,4 @@ class ReadCompanySchema(BaseModel):
 
     id: UUID
     name: str
+    deleted: bool

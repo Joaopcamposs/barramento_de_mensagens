@@ -27,3 +27,4 @@ class ReadUserSchema(BaseModel):
     id: UUID
     company: UUID
     email: str
+    deleted: bool

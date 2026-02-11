@@ -41,6 +41,7 @@ class TestCreateCompany:
 
         assert len(companies) == 1
         assert companies[0].name == "Persisted Corp"
+        assert companies[0].deleted is False
         assert isinstance(companies[0].id, UUID)
 
     async def test_create_duplicate_company_raises_error(self, engine) -> None:
@@ -92,10 +93,10 @@ class TestUpdateCompany:
 
 
 class TestDeleteCompany:
-    """Testes de integração para exclusão de empresa."""
+    """Testes de integração para exclusão (soft delete) de empresa."""
 
-    async def test_delete_company_removes_from_database(self, engine) -> None:
-        """Verifica que a exclusão remove a empresa do banco."""
+    async def test_delete_company_soft_deletes_from_database(self, engine) -> None:
+        """Verifica que a exclusão marca a empresa como deletada (soft delete)."""
         bus = bootstrap(raise_event_errors=True)
         await bus.handle(CreateCompany(name="To Delete"))
 
@@ -104,8 +105,22 @@ class TestDeleteCompany:
 
         uow = UnitOfWork()
         companies = await view_company(uow, "To Delete")
-
         assert companies == []
+
+    async def test_deleted_company_visible_with_include_deleted(self, engine) -> None:
+        """Verifica que empresa deletada é visível com include_deleted=True."""
+        bus = bootstrap(raise_event_errors=True)
+        await bus.handle(CreateCompany(name="Soft Deleted"))
+
+        bus2 = bootstrap(raise_event_errors=True)
+        await bus2.handle(DeleteCompany(name="Soft Deleted"))
+
+        uow = UnitOfWork()
+        companies = await view_company(uow, "Soft Deleted", include_deleted=True)
+
+        assert len(companies) == 1
+        assert companies[0].name == "Soft Deleted"
+        assert companies[0].deleted is True
 
     async def test_delete_nonexistent_company_raises_error(self, engine) -> None:
         """Verifica que excluir empresa inexistente lança exceção."""
@@ -113,6 +128,19 @@ class TestDeleteCompany:
 
         with pytest.raises(CompanyNotFound):
             await bus.handle(DeleteCompany(name="Nonexistent Corp"))
+
+    async def test_can_recreate_company_after_soft_delete(self, engine) -> None:
+        """Verifica que é possível recriar empresa com mesmo nome após soft delete."""
+        bus = bootstrap(raise_event_errors=True)
+        await bus.handle(CreateCompany(name="Recyclable Corp"))
+
+        bus2 = bootstrap(raise_event_errors=True)
+        await bus2.handle(DeleteCompany(name="Recyclable Corp"))
+
+        bus3 = bootstrap(raise_event_errors=True)
+        new_id = await bus3.handle(CreateCompany(name="Recyclable Corp"))
+
+        assert isinstance(new_id, UUID)
 
 
 class TestViewCompany:
@@ -129,6 +157,7 @@ class TestViewCompany:
         assert len(companies) == 1
         assert companies[0].id == company_id
         assert companies[0].name == "Viewable Corp"
+        assert companies[0].deleted is False
 
     async def test_view_nonexistent_company_returns_empty_list(self, engine) -> None:
         """Verifica que consultar empresa inexistente retorna lista vazia."""
@@ -157,3 +186,36 @@ class TestViewCompany:
         companies = await view_company(uow)
 
         assert companies == []
+
+    async def test_view_all_companies_excludes_deleted(self, engine) -> None:
+        """Verifica que consultar sem include_deleted exclui empresas deletadas."""
+        bus = bootstrap(raise_event_errors=True)
+        await bus.handle(CreateCompany(name="Active Corp"))
+        bus2 = bootstrap(raise_event_errors=True)
+        await bus2.handle(CreateCompany(name="Deleted Corp"))
+
+        bus3 = bootstrap(raise_event_errors=True)
+        await bus3.handle(DeleteCompany(name="Deleted Corp"))
+
+        uow = UnitOfWork()
+        companies = await view_company(uow)
+
+        assert len(companies) == 1
+        assert companies[0].name == "Active Corp"
+
+    async def test_view_all_companies_includes_deleted(self, engine) -> None:
+        """Verifica que consultar com include_deleted=True retorna todas."""
+        bus = bootstrap(raise_event_errors=True)
+        await bus.handle(CreateCompany(name="Active Corp 2"))
+        bus2 = bootstrap(raise_event_errors=True)
+        await bus2.handle(CreateCompany(name="Deleted Corp 2"))
+
+        bus3 = bootstrap(raise_event_errors=True)
+        await bus3.handle(DeleteCompany(name="Deleted Corp 2"))
+
+        uow = UnitOfWork()
+        companies = await view_company(uow, include_deleted=True)
+
+        assert len(companies) == 2
+        names = {c.name for c in companies}
+        assert names == {"Active Corp 2", "Deleted Corp 2"}

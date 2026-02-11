@@ -1,6 +1,6 @@
 """Mapeamento ORM da tabela user."""
 
-from sqlalchemy import Table, Column, String, UUID, ForeignKey
+from sqlalchemy import Table, Column, String, UUID, ForeignKey, Boolean, Index, text
 
 from business_contexts.domain.aggregate.user import User
 from infra.database import mapper_registry
@@ -12,6 +12,8 @@ user = Table(
     Column("email", String(255), nullable=False),
     Column("password", String, nullable=False),
     Column("company", UUID, ForeignKey("company.id"), nullable=False),
+    Column("deleted", Boolean, nullable=False, default=False),
+    Index('ix_user_email_deleted', 'email', unique=True, postgresql_where=text('deleted = false')),
 )
 
 user_mapper = mapper_registry.map_imperatively(User, user)

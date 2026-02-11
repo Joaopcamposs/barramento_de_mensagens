@@ -3,7 +3,7 @@
 from abc import abstractmethod
 from typing import Any
 
-from sqlalchemy import select, insert, update, delete
+from sqlalchemy import select, insert, update
 from sqlalchemy.sql import Executable
 
 from messagebus.entities import DomainRepository, OperationType
@@ -85,7 +85,12 @@ class CompanyDomainRepo(AbstractCompanyDomainRepo):
         """
         async with self.session as session:
             existing_company = (
-                await session.execute(select(Company).where(Company.name == name))
+                await session.execute(
+                    select(Company).where(
+                        Company.name == name,
+                        Company.deleted == False,
+                    )
+                )
             ).scalar_one_or_none()
             if existing_company:
                 raise CompanyAlreadyRegistered
@@ -109,7 +114,12 @@ class CompanyDomainRepo(AbstractCompanyDomainRepo):
         """
         async with self.session as session:
             company = (
-                await session.execute(select(Company).where(Company.name == name))
+                await session.execute(
+                    select(Company).where(
+                        Company.name == name,
+                        Company.deleted == False,
+                    )
+                )
             ).scalar_one_or_none()
             if not company:
                 raise CompanyNotFound
@@ -117,6 +127,7 @@ class CompanyDomainRepo(AbstractCompanyDomainRepo):
             aggregate = Company(
                 id=company.id,
                 name=company.name,
+                deleted=company.deleted,
             )
 
         return aggregate
@@ -129,6 +140,7 @@ class CompanyDomainRepo(AbstractCompanyDomainRepo):
         data = {
             "id": company.id,
             "name": company.name,
+            "deleted": company.deleted,
         }
 
         operation: Executable
@@ -143,7 +155,11 @@ class CompanyDomainRepo(AbstractCompanyDomainRepo):
         await self.session.execute(operation)
 
     async def _remove(self, company: Company) -> None:
-        """Remove uma empresa do banco de dados."""
-        operation = delete(Company).where(Company.id == company.id)
+        """Marca uma empresa como deletada no banco de dados (soft delete)."""
+        operation = (
+            update(Company)
+            .where(Company.id == company.id)
+            .values({"deleted": True})
+        )
 
         await self.session.execute(operation)

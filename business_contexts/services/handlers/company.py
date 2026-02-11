@@ -51,7 +51,7 @@ async def update_company(command: UpdateCompany, uow: UnitOfWork) -> None:
 
 
 async def delete_company(command: DeleteCompany, uow: UnitOfWork) -> None:
-    """Handler para exclusão de empresa."""
+    """Handler para exclusão (soft delete) de empresa."""
     async with uow(Domain.company) as uow:
         domain_repo: CompanyDomainRepo = uow.domain_repo
 

@@ -8,7 +8,11 @@ from business_contexts.domain.entitites.user import User
 from messagebus.unity_of_work import UnitOfWork
 
 
-async def view_user(uow: UnitOfWork, email: str | None = None) -> list[User]:
+async def view_user(
+    uow: UnitOfWork,
+    email: str | None = None,
+    include_deleted: bool = False,
+) -> list[User]:
     """
     Consulta usuários. Se o email for informado, filtra pelo email.
     Caso contrário, retorna todos os usuários.
@@ -16,6 +20,7 @@ async def view_user(uow: UnitOfWork, email: str | None = None) -> list[User]:
     Args:
         uow: Unit of Work para gerenciar a sessão.
         email: Email do usuário (opcional). Se None, retorna todos.
+        include_deleted: Se True, inclui usuários deletados.
 
     Returns:
         Lista de entidades User.
@@ -23,10 +28,10 @@ async def view_user(uow: UnitOfWork, email: str | None = None) -> list[User]:
     async with uow(Domain.user) as uow:
         view_repo: UserViewRepo = uow.view_repo
         if email:
-            user = await view_repo.get_by_email(email)
+            user = await view_repo.get_by_email(email, include_deleted=include_deleted)
             if not user:
                 return []
             return [user]
 
-        user = await view_repo.get_all()
+        user = await view_repo.get_all(include_deleted=include_deleted)
         return user

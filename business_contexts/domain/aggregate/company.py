@@ -19,6 +19,7 @@ class Company(Aggregate):
 
     id: UUID
     name: str
+    deleted: bool = False
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -34,7 +35,7 @@ class Company(Aggregate):
         Returns:
             Nova instância de Company com ID gerado.
         """
-        return Company(id=uuid7.create(), name=name)
+        return Company(id=uuid7.create(), name=name, deleted=False)
 
     def create(self) -> None:
         """Marca o agregado para inserção e emite evento de criação."""
@@ -64,8 +65,10 @@ class Company(Aggregate):
         )
 
     def delete(self) -> None:
-        """Marca o agregado para remoção e emite evento de exclusão."""
+        """Marca o agregado como deletado (soft delete) e emite evento de exclusão."""
         self._operation_type = OperationType.DELETE
+
+        self.deleted = True
 
         self.add_event(
             CompanyDeleted(

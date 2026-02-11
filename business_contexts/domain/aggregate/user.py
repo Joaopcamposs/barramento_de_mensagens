@@ -20,6 +20,7 @@ class User(Aggregate):
     company: UUID
     email: str
     password: str
+    deleted: bool = False
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -42,6 +43,7 @@ class User(Aggregate):
             company=company,
             email=email,
             password=password,
+            deleted=False,
         )
 
     def create(self) -> None:
@@ -78,8 +80,10 @@ class User(Aggregate):
         )
 
     def delete(self) -> None:
-        """Marca o agregado para remoção e emite evento de exclusão."""
+        """Marca o agregado como deletado (soft delete) e emite evento de exclusão."""
         self._operation_type = OperationType.DELETE
+
+        self.deleted = True
 
         self.add_event(
             UserDeleted(

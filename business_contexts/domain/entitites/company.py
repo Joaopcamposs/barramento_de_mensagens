@@ -10,3 +10,4 @@ class Company:
 
     id: UUID
     name: str
+    deleted: bool

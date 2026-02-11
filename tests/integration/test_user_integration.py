@@ -57,6 +57,7 @@ class TestCreateUser:
         assert len(users) == 1
         assert users[0].email == "persist@example.com"
         assert users[0].company == company_id
+        assert users[0].deleted is False
         assert isinstance(users[0].id, UUID)
 
     async def test_create_duplicate_user_raises_error(self, engine) -> None:
@@ -141,10 +142,10 @@ class TestUpdateUser:
 
 
 class TestDeleteUser:
-    """Testes de integração para exclusão de usuário."""
+    """Testes de integração para exclusão (soft delete) de usuário."""
 
-    async def test_delete_user_removes_from_database(self, engine) -> None:
-        """Verifica que a exclusão remove o usuário do banco."""
+    async def test_delete_user_soft_deletes_from_database(self, engine) -> None:
+        """Verifica que a exclusão marca o usuário como deletado (soft delete)."""
         company_id = await _create_company()
         bus = bootstrap(raise_event_errors=True)
         await bus.handle(
@@ -158,8 +159,27 @@ class TestDeleteUser:
 
         uow = UnitOfWork()
         users = await view_user(uow, "delete@example.com")
-
         assert users == []
+
+    async def test_deleted_user_visible_with_include_deleted(self, engine) -> None:
+        """Verifica que usuário deletado é visível com include_deleted=True."""
+        company_id = await _create_company()
+        bus = bootstrap(raise_event_errors=True)
+        await bus.handle(
+            CreateUser(
+                company=company_id, email="soft@example.com", password="secret123"
+            )
+        )
+
+        bus2 = bootstrap(raise_event_errors=True)
+        await bus2.handle(DeleteUser(email="soft@example.com"))
+
+        uow = UnitOfWork()
+        users = await view_user(uow, "soft@example.com", include_deleted=True)
+
+        assert len(users) == 1
+        assert users[0].email == "soft@example.com"
+        assert users[0].deleted is True
 
     async def test_delete_nonexistent_user_raises_error(self, engine) -> None:
         """Verifica que excluir usuário inexistente lança exceção."""
@@ -167,6 +187,28 @@ class TestDeleteUser:
 
         with pytest.raises(UserNotFound):
             await bus.handle(DeleteUser(email="nonexistent@example.com"))
+
+    async def test_can_recreate_user_after_soft_delete(self, engine) -> None:
+        """Verifica que é possível recriar usuário com mesmo email após soft delete."""
+        company_id = await _create_company()
+        bus = bootstrap(raise_event_errors=True)
+        await bus.handle(
+            CreateUser(
+                company=company_id, email="recycle@example.com", password="secret123"
+            )
+        )
+
+        bus2 = bootstrap(raise_event_errors=True)
+        await bus2.handle(DeleteUser(email="recycle@example.com"))
+
+        bus3 = bootstrap(raise_event_errors=True)
+        new_id = await bus3.handle(
+            CreateUser(
+                company=company_id, email="recycle@example.com", password="newpass"
+            )
+        )
+
+        assert isinstance(new_id, UUID)
 
 
 class TestViewUser:
@@ -189,6 +231,7 @@ class TestViewUser:
         assert users[0].id == user_id
         assert users[0].email == "view@example.com"
         assert users[0].company == company_id
+        assert users[0].deleted is False
 
     async def test_view_nonexistent_user_returns_empty_list(self, engine) -> None:
         """Verifica que consultar usuário inexistente retorna lista vazia."""
@@ -222,3 +265,46 @@ class TestViewUser:
         users = await view_user(uow)
 
         assert users == []
+
+    async def test_view_all_users_excludes_deleted(self, engine) -> None:
+        """Verifica que consultar sem include_deleted exclui usuários deletados."""
+        company_id = await _create_company()
+        bus = bootstrap(raise_event_errors=True)
+        await bus.handle(
+            CreateUser(company=company_id, email="active@example.com", password="secret123")
+        )
+        bus2 = bootstrap(raise_event_errors=True)
+        await bus2.handle(
+            CreateUser(company=company_id, email="todelete@example.com", password="secret123")
+        )
+
+        bus3 = bootstrap(raise_event_errors=True)
+        await bus3.handle(DeleteUser(email="todelete@example.com"))
+
+        uow = UnitOfWork()
+        users = await view_user(uow)
+
+        assert len(users) == 1
+        assert users[0].email == "active@example.com"
+
+    async def test_view_all_users_includes_deleted(self, engine) -> None:
+        """Verifica que consultar com include_deleted=True retorna todos."""
+        company_id = await _create_company()
+        bus = bootstrap(raise_event_errors=True)
+        await bus.handle(
+            CreateUser(company=company_id, email="active2@example.com", password="secret123")
+        )
+        bus2 = bootstrap(raise_event_errors=True)
+        await bus2.handle(
+            CreateUser(company=company_id, email="deleted2@example.com", password="secret123")
+        )
+
+        bus3 = bootstrap(raise_event_errors=True)
+        await bus3.handle(DeleteUser(email="deleted2@example.com"))
+
+        uow = UnitOfWork()
+        users = await view_user(uow, include_deleted=True)
+
+        assert len(users) == 2
+        emails = {u.email for u in users}
+        assert emails == {"active2@example.com", "deleted2@example.com"}

@@ -41,10 +41,10 @@ async def put_company(body: UpdateCompanySchema) -> None:
 
 
 @router.get("/company", response_model=list[ReadCompanySchema])
-async def get_company(name: str | None = None):
+async def get_company(name: str | None = None, include_deleted: bool = False):
     """Consulta empresas. Se o nome for informado, filtra pelo nome."""
     uow = UnitOfWork()
-    companies = await view_company(uow, name)
+    companies = await view_company(uow, name, include_deleted=include_deleted)
     return companies
 
 

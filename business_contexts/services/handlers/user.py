@@ -53,7 +53,7 @@ async def update_user(command: UpdateUser, uow: UnitOfWork) -> None:
 
 
 async def delete_user(command: DeleteUser, uow: UnitOfWork) -> None:
-    """Handler para exclusão de usuário."""
+    """Handler para exclusão (soft delete) de usuário."""
     async with uow(Domain.user) as uow:
         domain_repo: UserDomainRepo = uow.domain_repo
 

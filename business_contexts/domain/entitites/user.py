@@ -11,3 +11,4 @@ class User:
     id: UUID
     company: UUID
     email: str
+    deleted: bool

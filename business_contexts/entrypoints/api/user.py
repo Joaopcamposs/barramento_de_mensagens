@@ -49,10 +49,10 @@ async def put_user(body: UpdateUserSchema) -> None:
 
 
 @router.get("/user", response_model=list[ReadUserSchema])
-async def get_user(email: str | None = None):
+async def get_user(email: str | None = None, include_deleted: bool = False):
     """Consulta usuários. Se o email for informado, filtra pelo email."""
     uow = UnitOfWork()
-    user = await view_user(uow, email)
+    user = await view_user(uow, email, include_deleted=include_deleted)
     return user
 
 

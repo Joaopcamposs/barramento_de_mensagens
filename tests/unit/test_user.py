@@ -32,6 +32,7 @@ class TestUserAggregate:
         assert user.company == company_id
         assert user.email == "test@example.com"
         assert user.password == "secret123"
+        assert user.deleted is False
 
     def test_create_aggregate_generates_unique_ids(self) -> None:
         """Verifica que cada chamada gera um ID diferente."""
@@ -127,14 +128,15 @@ class TestUserAggregate:
         assert event.id == user.id
         assert event.company == company_id
 
-    def test_delete_sets_delete_operation_type(self) -> None:
-        """Verifica que delete() define o tipo de operação como DELETE."""
+    def test_delete_sets_update_operation_type(self) -> None:
+        """Verifica que delete() define o tipo de operação como UPDATE (soft delete)."""
         user = User.create_aggregate(
             company=uuid7.create(), email="test@example.com", password="secret123"
         )
         user.delete()
 
         assert user._operation_type == OperationType.DELETE
+        assert user.deleted is True
 
     def test_delete_emits_user_deleted_event(self) -> None:
         """Verifica que delete() emite o evento UserDeleted."""

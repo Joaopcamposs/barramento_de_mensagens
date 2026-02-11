@@ -26,6 +26,7 @@ class TestCompanyAggregate:
 
         assert isinstance(company.id, UUID)
         assert company.name == "Acme Corp"
+        assert company.deleted is False
 
     def test_create_aggregate_generates_unique_ids(self) -> None:
         """Verifica que cada chamada gera um ID diferente."""
@@ -81,12 +82,13 @@ class TestCompanyAggregate:
         assert isinstance(event, CompanyUpdated)
         assert event.id == company.id
 
-    def test_delete_sets_delete_operation_type(self) -> None:
-        """Verifica que delete() define o tipo de operação como DELETE."""
+    def test_delete_sets_update_operation_type(self) -> None:
+        """Verifica que delete() define o tipo de operação como UPDATE (soft delete)."""
         company = Company.create_aggregate(name="Acme Corp")
         company.delete()
 
         assert company._operation_type == OperationType.DELETE
+        assert company.deleted is True
 
     def test_delete_emits_company_deleted_event(self) -> None:
         """Verifica que delete() emite o evento CompanyDeleted."""
