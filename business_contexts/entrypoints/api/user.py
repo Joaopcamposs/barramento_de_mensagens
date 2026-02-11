@@ -30,6 +30,7 @@ async def post_user(body: CreateUserSchema) -> UUID:
     bus = bootstrap(user=current_user.get())
 
     command = CreateUser(
+        company=current_user.get().company,
         email=body.email,
         cpf=body.cpf,
         password=body.password,

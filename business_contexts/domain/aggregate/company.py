@@ -10,7 +10,7 @@ from business_contexts.domain.events.user import (
     TimeToCreateInitialCompanyUser,
     TimeToCreateCompanyAdminUser,
 )
-from libs.tipos_basicos import Email
+from libs.basic_types import Email
 from messagebus.entities import Aggregate, OperationType
 from business_contexts.domain.events.company import (
     CompanyCreated,

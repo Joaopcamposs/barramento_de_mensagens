@@ -5,6 +5,8 @@ from uuid import UUID
 import uuid7
 
 from messagebus.entities import Aggregate, OperationType, UserSecurity
+
+_TEST_COMPANY_ID = uuid7.create()
 from business_contexts.domain.aggregate.user import User, PublicUser
 from business_contexts.domain.commands.user import (
     CreateUser,
@@ -289,11 +291,13 @@ class TestUserCommands:
     def test_create_user_command(self) -> None:
         """Verifica a criação do comando CreateUser."""
         command = CreateUser(
+            company=_TEST_COMPANY_ID,
             email="test@example.com",
             cpf="12345678901",
             password="secret123",
         )
 
+        assert command.company == _TEST_COMPANY_ID
         assert command.email == "test@example.com"
         assert command.cpf == "12345678901"
         assert command.password == "secret123"
@@ -303,6 +307,7 @@ class TestUserCommands:
     def test_create_user_command_custom_flags(self) -> None:
         """Verifica a criação do CreateUser com active/admin customizados."""
         command = CreateUser(
+            company=_TEST_COMPANY_ID,
             email="admin@example.com",
             cpf="12345678901",
             password="secret123",

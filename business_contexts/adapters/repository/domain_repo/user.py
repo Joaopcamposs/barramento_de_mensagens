@@ -45,6 +45,7 @@ class AbstractUserDomainRepo(DomainRepository):
         Args:
             user: Agregado User a ser removido.
         """
+        self.seen.add(user)
         await self._remove(user)
 
     @abstractmethod

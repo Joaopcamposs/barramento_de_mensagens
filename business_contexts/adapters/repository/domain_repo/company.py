@@ -44,6 +44,7 @@ class AbstractCompanyDomainRepo(DomainRepository):
         Args:
             company: Agregado Company a ser removido.
         """
+        self.seen.add(company)
         await self._remove(company)
 
     @abstractmethod
