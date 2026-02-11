@@ -17,18 +17,28 @@ from business_contexts.domain.events.user import (
     UserCreated,
     UserUpdated,
     UserDeleted,
+    TimeToCreateInitialCompanyUser,
+    TimeToCreateCompanyAdminUser,
 )
 
 
-async def create_user(command: CreateUser, uow: UnitOfWork) -> UUID:
+async def create_user(
+    command_or_event: CreateUser
+    | TimeToCreateInitialCompanyUser
+    | TimeToCreateCompanyAdminUser,
+    uow: UnitOfWork,
+) -> UUID:
     """Handler para criação de usuário."""
     async with uow(Domain.user) as uow:
         domain_repo: UserDomainRepo = uow.domain_repo
 
         user = await domain_repo.create_aggregate(
-            company=command.company,
-            email=command.email,
-            password=command.password,
+            company=command_or_event.company,
+            email=command_or_event.email,
+            cpf=command_or_event.cpf,
+            password=command_or_event.password,
+            active=command_or_event.active,
+            admin=command_or_event.admin,
         )
         user.create()
 
@@ -46,7 +56,12 @@ async def update_user(command: UpdateUser, uow: UnitOfWork) -> None:
         user = await domain_repo.get_by_email(
             email=command.email,
         )
-        user.update(email=command.new_email, password=command.new_password)
+        user.update(
+            email=command.new_email,
+            password=command.new_password,
+            active=command.new_active,
+            admin=command.new_admin,
+        )
 
         await domain_repo.add(user)
         await uow.commit()

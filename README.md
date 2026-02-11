@@ -113,17 +113,21 @@ barramento_de_mensagens/
 ### Domínios de Negócio
 
 #### Company
-- **Agregado** com `create`, `update`, `delete` — cada operação emite evento correspondente.
+- **Agregado** com campos: `legal_name`, `trade_name`, `responsible_name`, `email`, `cpf`, `cnpj`, `active`.
+- **Operações** `create`, `update`, `delete` — cada uma emite evento correspondente.
 - **Comandos**: `CreateCompany`, `UpdateCompany`, `DeleteCompany`.
 - **Eventos**: `CompanyCreated`, `CompanyUpdated`, `CompanyDeleted`.
+- **Criação automática de usuários**: ao criar uma empresa, eventos `TimeToCreateInitialCompanyUser` e `TimeToCreateCompanyAdminUser` são emitidos (controlável via flag `should_create_user`).
 - **API REST**: CRUD completo via endpoints `/v1/company`.
-- **Validações**: nome único (409), empresa não encontrada (404).
+- **Validações**: razão social única (409), empresa não encontrada (404).
 
 #### User
-- **Agregado** com `create`, `update`, `delete` — cada operação emite evento correspondente.
+- **Agregado** com campos: `email`, `cpf`, `password`, `active`, `admin`.
+- **Operações** `create`, `update`, `delete` — cada uma emite evento correspondente.
 - **Comandos**: `CreateUser`, `UpdateUser`, `DeleteUser`.
-- **Eventos**: `UserCreated`, `UserUpdated`, `UserDeleted`.
+- **Eventos**: `UserCreated`, `UserUpdated`, `UserDeleted`, `TimeToCreateInitialCompanyUser`, `TimeToCreateCompanyAdminUser`.
 - **API REST**: CRUD completo via endpoints `/v1/user`.
+- **Regra de consulta**: `company` é obrigatório em todas as consultas de usuário — somente usuários da empresa informada são retornados.
 - **Validações**: email único (409), usuário não encontrado (404).
 - **Relacionamento**: FK para `company`.
 
@@ -135,9 +139,9 @@ barramento_de_mensagens/
 - **UUID7** para geração de IDs ordenáveis.
 
 ### Testes
-- **Unitários**: agregados, comandos, eventos, MessageBus com fake UoW.
-- **Integração**: fluxo completo (create → view → update → delete) com PostgreSQL de teste.
-- **Fixtures**: engine com criação/drop de tabelas por sessão e limpeza de dados entre testes.
+- **Unitários** (80 testes): agregados, comandos, eventos, entidades, schemas, MessageBus com fake UoW.
+- **Integração** (39 testes): fluxo completo (create → view → update → delete) com PostgreSQL de teste, incluindo fluxo empresa → usuários, isolamento multi-empresa e ciclo de vida completo.
+- **Fixtures**: engine com criação de tabelas e limpeza de dados entre testes (per-test scope para evitar problemas de event loop).
 
 ---
 
@@ -242,16 +246,16 @@ make test-all
 |--------|------|-----------|
 | POST | `/v1/company` | Cria uma empresa |
 | PUT | `/v1/company` | Atualiza uma empresa |
-| GET | `/v1/company` | Lista empresas (filtro opcional por `name`) |
-| DELETE | `/v1/company` | Exclui uma empresa por `name` |
+| GET | `/v1/company` | Lista empresas (filtro opcional por `legal_name`) |
+| DELETE | `/v1/company` | Exclui uma empresa por `legal_name` |
 
 ### User (`/v1/user`)
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | POST | `/v1/user` | Cria um usuário |
 | PUT | `/v1/user` | Atualiza um usuário |
-| GET | `/v1/user` | Lista usuários (filtro opcional por `email`) |
-| DELETE | `/v1/user` | Exclui um usuário por `email` |
+| GET | `/v1/user` | Lista usuários por `company` (filtro opcional por `email`) |
+| DELETE | `/v1/user` | Exclui um usuário por `company` + `email` |
 
 ---
 

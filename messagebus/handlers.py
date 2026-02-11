@@ -20,6 +20,8 @@ from business_contexts.domain.events.user import (
     UserCreated,
     UserUpdated,
     UserDeleted,
+    TimeToCreateInitialCompanyUser,
+    TimeToCreateCompanyAdminUser,
 )
 from business_contexts.services.handlers.company import (
     create_company,
@@ -57,5 +59,7 @@ EVENT_HANDLERS: EventHandlers = EventHandlers(
         UserCreated: [user_created],
         UserUpdated: [user_updated],
         UserDeleted: [user_deleted],
+        TimeToCreateInitialCompanyUser: [create_user],
+        TimeToCreateCompanyAdminUser: [create_user],
     }
 )

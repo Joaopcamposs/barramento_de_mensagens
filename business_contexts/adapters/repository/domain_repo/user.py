@@ -72,7 +72,10 @@ class UserDomainRepo(AbstractUserDomainRepo):
         self,
         company: UUID,
         email: str,
+        cpf: str,
         password: str,
+        active: bool = True,
+        admin: bool = False,
     ) -> User:
         """
         Cria um novo agregado User, verificando duplicidade de email.
@@ -80,7 +83,10 @@ class UserDomainRepo(AbstractUserDomainRepo):
         Args:
             company: ID da empresa associada.
             email: Email do usuário.
+            cpf: CPF do usuário.
             password: Senha do usuário.
+            active: Se o usuário está ativo.
+            admin: Se o usuário é administrador.
 
         Returns:
             Nova instância do agregado User.
@@ -93,7 +99,7 @@ class UserDomainRepo(AbstractUserDomainRepo):
                 await session.execute(
                     select(User).where(
                         User.email == email,
-                        User.deleted == False,
+                        User.deleted == False,  # noqa: E712
                     )
                 )
             ).scalar_one_or_none()
@@ -103,7 +109,10 @@ class UserDomainRepo(AbstractUserDomainRepo):
         return User.create_aggregate(
             company=company,
             email=email,
+            cpf=cpf,
             password=password,
+            active=active,
+            admin=admin,
         )
 
     async def get_by_email(self, email: str) -> User:
@@ -124,7 +133,7 @@ class UserDomainRepo(AbstractUserDomainRepo):
                 await session.execute(
                     select(User).where(
                         User.email == email,
-                        User.deleted == False,
+                        User.deleted == False,  # noqa: E712
                     )
                 )
             ).scalar_one_or_none()
@@ -135,7 +144,10 @@ class UserDomainRepo(AbstractUserDomainRepo):
                 id=user.id,
                 company=user.company,
                 email=user.email,
+                cpf=user.cpf,
                 password=user.password,
+                active=user.active,
+                admin=user.admin,
                 deleted=user.deleted,
             )
 
@@ -150,7 +162,10 @@ class UserDomainRepo(AbstractUserDomainRepo):
             "id": user.id,
             "company": user.company,
             "email": user.email,
+            "cpf": user.cpf,
             "password": user.password,
+            "active": user.active,
+            "admin": user.admin,
             "deleted": user.deleted,
         }
 
@@ -167,10 +182,6 @@ class UserDomainRepo(AbstractUserDomainRepo):
 
     async def _remove(self, user: User) -> None:
         """Marca um usuário como deletado no banco de dados (soft delete)."""
-        operation = (
-            update(User)
-            .where(User.id == user.id)
-            .values({"deleted": True})
-        )
+        operation = update(User).where(User.id == user.id).values({"deleted": True})
 
         await self.session.execute(operation)

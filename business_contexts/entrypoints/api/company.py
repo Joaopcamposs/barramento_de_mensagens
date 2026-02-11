@@ -26,7 +26,16 @@ async def post_company(body: CreateCompanySchema) -> UUID:
     """Cria uma nova empresa."""
     bus = bootstrap()
 
-    command = CreateCompany(name=body.name)
+    command = CreateCompany(
+        legal_name=body.legal_name,
+        trade_name=body.trade_name,
+        responsible_name=body.responsible_name,
+        email=body.email,
+        cpf=body.cpf,
+        cnpj=body.cnpj,
+        password=body.password,
+        active=body.active,
+    )
     company_id: UUID = await bus.handle(command)
     return company_id
 
@@ -36,22 +45,31 @@ async def put_company(body: UpdateCompanySchema) -> None:
     """Atualiza uma empresa existente."""
     bus = bootstrap()
 
-    command = UpdateCompany(name=body.name, new_name=body.new_name)
+    command = UpdateCompany(
+        legal_name=body.legal_name,
+        new_legal_name=body.new_legal_name,
+        new_trade_name=body.new_trade_name,
+        new_responsible_name=body.new_responsible_name,
+        new_email=body.new_email,
+        new_active=body.new_active,
+    )
     await bus.handle(command)
 
 
 @router.get("/company", response_model=list[ReadCompanySchema])
-async def get_company(name: str | None = None, include_deleted: bool = False):
-    """Consulta empresas. Se o nome for informado, filtra pelo nome."""
+async def get_company(legal_name: str | None = None, include_deleted: bool = False):
+    """Consulta empresas. Se a razão social for informada, filtra pela razão social."""
     uow = UnitOfWork()
-    companies = await view_company(uow, name, include_deleted=include_deleted)
+    companies = await view_company(
+        uow, legal_name=legal_name, include_deleted=include_deleted
+    )
     return companies
 
 
 @router.delete("/company", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_company(name: str) -> None:
-    """Exclui uma empresa pelo nome."""
+async def delete_company(legal_name: str) -> None:
+    """Exclui uma empresa pela razão social."""
     bus = bootstrap()
 
-    command = DeleteCompany(name=name)
+    command = DeleteCompany(legal_name=legal_name)
     await bus.handle(command)

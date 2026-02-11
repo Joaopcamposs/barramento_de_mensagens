@@ -89,6 +89,8 @@ def bootstrap(
     command_handlers: CommandHandlers | None = None,
     uow: AbstractUnitOfWork | None = None,
     user: UserBase | None = None,
+    schema: str | None = None,
+    create_schema: bool = False,
     raise_event_errors: bool = False,
     read_only: bool = False,
 ) -> MessageBus:
@@ -99,7 +101,9 @@ def bootstrap(
         event_handlers: Handlers de evento customizados (opcional).
         command_handlers: Handlers de comando customizados (opcional).
         uow: Unit of Work customizado (opcional).
-        user: Usuário base para contexto (opcional).
+        user: Usuário base para o repositório de domínio (opcional).
+        schema: Schema do banco de dados (opcional).
+        create_schema: Se True, cria o schema no banco antes de operar.
         raise_event_errors: Se True, propaga exceções de handlers de evento.
         read_only: Se True, cria Unit of Work somente leitura.
 
@@ -114,6 +118,8 @@ def bootstrap(
     if uow is None:
         uow = UnitOfWork(
             user=user,
+            schema=schema,
+            create_schema=create_schema,
             read_only=read_only,
         )
 

@@ -10,16 +10,16 @@ from messagebus.unity_of_work import UnitOfWork
 
 async def view_company(
     uow: UnitOfWork,
-    name: str | None = None,
+    legal_name: str | None = None,
     include_deleted: bool = False,
 ) -> list[Company]:
     """
-    Consulta empresas. Se o nome for informado, filtra pelo nome.
+    Consulta empresas. Se a razão social for informada, filtra pela razão social.
     Caso contrário, retorna todas as empresas.
 
     Args:
         uow: Unit of Work para gerenciar a sessão.
-        name: Nome da empresa (opcional). Se None, retorna todas.
+        legal_name: Razão social da empresa (opcional). Se None, retorna todas.
         include_deleted: Se True, inclui empresas deletadas.
 
     Returns:
@@ -27,8 +27,10 @@ async def view_company(
     """
     async with uow(Domain.company) as uow:
         view_repo: CompanyViewRepo = uow.view_repo
-        if name:
-            company = await view_repo.get_by_name(name, include_deleted=include_deleted)
+        if legal_name:
+            company = await view_repo.get_by_legal_name(
+                legal_name, include_deleted=include_deleted
+            )
             if not company:
                 return []
             return [company]

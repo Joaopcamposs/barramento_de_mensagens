@@ -11,8 +11,8 @@ from typing import Callable, NewType, Any
 # Configure logging to show INFO level messages
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],
 )
 
 logger = logging.getLogger(__name__)

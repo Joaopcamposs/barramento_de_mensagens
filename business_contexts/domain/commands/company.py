@@ -1,6 +1,7 @@
 """Módulo de comandos do domínio Company."""
 
 from dataclasses import dataclass
+from uuid import UUID
 
 from messagebus.messagebus import Command
 
@@ -9,19 +10,33 @@ from messagebus.messagebus import Command
 class CreateCompany(Command):
     """Comando para criar uma nova empresa."""
 
-    name: str
+    legal_name: str
+    responsible_name: str
+    active: bool
+    cpf: str
+    email: str
+    password: str
+    cnpj: str | None = None
+    trade_name: str | None = None
+    should_create_user: bool = True
+
+    _first_company_id: UUID | None = None
 
 
 @dataclass
 class UpdateCompany(Command):
     """Comando para atualizar uma empresa existente."""
 
-    name: str
-    new_name: str
+    legal_name: str
+    new_legal_name: str | None = None
+    new_trade_name: str | None = None
+    new_responsible_name: str | None = None
+    new_email: str | None = None
+    new_active: bool | None = None
 
 
 @dataclass
 class DeleteCompany(Command):
     """Comando para excluir uma empresa."""
 
-    name: str
+    legal_name: str
