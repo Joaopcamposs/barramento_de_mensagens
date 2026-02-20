@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import registry
 
-from messagebus.entities import UserSecurity
+from business_contexts.security import UserSecurity
 
 mapper_registry = registry()
 

@@ -44,7 +44,7 @@ test-env:
 	docker compose -f docker-compose.test.yml -p $(COMPOSE_TEST_NAME) up -d --wait
 
 test-env-down:
-	docker compose -f $(INFRA)/docker-compose.test.yml -p $(COMPOSE_TEST_NAME) down -v
+	docker compose -f docker-compose.test.yml -p $(COMPOSE_TEST_NAME) down -v
 
 # ── Testes ──────────────────────────────────────────────────────────
 test-unit:

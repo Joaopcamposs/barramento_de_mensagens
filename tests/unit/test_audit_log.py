@@ -304,7 +304,7 @@ class TestAuditLogDomainRegistration:
     """Testes para o registro do domínio audit_log no enum Domain."""
 
     def test_audit_log_domain_exists(self) -> None:
-        from messagebus.domains import Domain
+        from business_contexts.domains import Domain
 
         assert hasattr(Domain, "audit_log")
 
@@ -312,7 +312,7 @@ class TestAuditLogDomainRegistration:
         from business_contexts.adapters.repository.domain_repo.audit_log import (
             AuditLogDomainRepo,
         )
-        from messagebus.domains import Domain
+        from business_contexts.domains import Domain
 
         assert Domain.audit_log.value[0] is AuditLogDomainRepo
 
@@ -320,7 +320,7 @@ class TestAuditLogDomainRegistration:
         from business_contexts.adapters.repository.view_repo.audit_log import (
             AuditLogViewRepo,
         )
-        from messagebus.domains import Domain
+        from business_contexts.domains import Domain
 
         assert Domain.audit_log.value[1] is AuditLogViewRepo
 
@@ -334,7 +334,7 @@ class TestAuditHandlersRegistration:
             CompanyDeleted,
             CompanyUpdated,
         )
-        from messagebus.handlers import EVENT_HANDLERS
+        from business_contexts.handlers import EVENT_HANDLERS
         from business_contexts.services.handlers.audit_log import (
             audit_entity_created,
             audit_entity_deleted,
@@ -351,7 +351,7 @@ class TestAuditHandlersRegistration:
             UserDeleted,
             UserUpdated,
         )
-        from messagebus.handlers import EVENT_HANDLERS
+        from business_contexts.handlers import EVENT_HANDLERS
         from business_contexts.services.handlers.audit_log import (
             audit_entity_created,
             audit_entity_deleted,

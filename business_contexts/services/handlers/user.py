@@ -20,7 +20,7 @@ from business_contexts.domain.events.user import (
     UserDeleted,
     UserUpdated,
 )
-from messagebus.domains import Domain
+from business_contexts.domains import Domain
 from messagebus.messagebus import logger
 from messagebus.unity_of_work import UnitOfWork
 

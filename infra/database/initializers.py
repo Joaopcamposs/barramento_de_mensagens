@@ -13,7 +13,7 @@ from business_contexts.consts import (
 )
 from business_contexts.domain.commands.company import CreateCompany
 from infra.database import delete_schema, list_existing_schemas
-from messagebus.bootstrap import bootstrap
+from business_contexts.bootstrap import bootstrap
 from messagebus.entities import UserBase
 from messagebus.messagebus import logger
 

@@ -14,7 +14,7 @@ from business_contexts.domain.excecoes import (
     CompanyAlreadyRegistered,
     CompanyNotFound,
 )
-from messagebus.bootstrap import bootstrap
+from business_contexts.bootstrap import bootstrap
 from messagebus.unity_of_work import UnitOfWork
 
 

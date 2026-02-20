@@ -16,7 +16,7 @@ from business_contexts.domain.excecoes import (
     UserAlreadyRegistered,
     UserNotFound,
 )
-from messagebus.bootstrap import bootstrap
+from business_contexts.bootstrap import bootstrap
 from messagebus.unity_of_work import UnitOfWork
 
 

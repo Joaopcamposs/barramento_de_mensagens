@@ -16,7 +16,7 @@ from business_contexts.entrypoints.schemas.company import (
     UpdateCompanySchema,
 )
 from business_contexts.services.handlers.security import current_user, get_current_user
-from messagebus.bootstrap import bootstrap
+from business_contexts.bootstrap import bootstrap
 from messagebus.unity_of_work import UnitOfWork
 
 router = APIRouter(

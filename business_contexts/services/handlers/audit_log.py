@@ -9,7 +9,7 @@ from messagebus.unity_of_work import UnitOfWork
 from business_contexts.adapters.repository.domain_repo.audit_log import AuditLogDomainRepo
 from business_contexts.domain.entitites.audit_log import AuditLog
 from business_contexts.domain.value_objects.enums import AuditOperation
-from messagebus.domains import Domain
+from business_contexts.domains import Domain
 
 
 async def _persist_audit_log(

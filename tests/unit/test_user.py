@@ -4,7 +4,8 @@ from uuid import UUID
 
 import uuid7
 
-from messagebus.entities import Aggregate, OperationType, UserSecurity
+from business_contexts.security import UserSecurity
+from messagebus.entities import Aggregate, OperationType
 
 _TEST_COMPANY_ID = uuid7.create()
 from business_contexts.domain.aggregate.user import PublicUser, User

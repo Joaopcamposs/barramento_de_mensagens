@@ -12,7 +12,7 @@ from business_contexts.domain.commands.security import AuthenticateUser
 from business_contexts.domain.excecoes import CredentialsException
 from business_contexts.entrypoints.schemas.security import Token
 from business_contexts.services.handlers.security import get_current_user
-from messagebus.bootstrap import bootstrap
+from business_contexts.bootstrap import bootstrap
 
 
 async def _create_company_with_user(

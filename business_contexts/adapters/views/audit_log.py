@@ -6,7 +6,7 @@ from uuid import UUID
 from messagebus.unity_of_work import UnitOfWork
 from business_contexts.adapters.repository.view_repo.audit_log import AuditLogViewRepo
 from business_contexts.domain.entitites.audit_log import AuditLog
-from messagebus.domains import Domain
+from business_contexts.domains import Domain
 
 
 async def view_audit_log(

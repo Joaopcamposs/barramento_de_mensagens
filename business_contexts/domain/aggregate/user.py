@@ -11,7 +11,8 @@ from business_contexts.domain.events.user import (
     UserDeleted,
     UserUpdated,
 )
-from messagebus.entities import Aggregate, OperationType, UserSecurity
+from business_contexts.security import UserSecurity
+from messagebus.entities import Aggregate, OperationType
 
 
 @dataclass(kw_only=True)
