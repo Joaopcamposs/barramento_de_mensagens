@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABC
 from collections.abc import Generator
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -100,6 +101,11 @@ class AbstractUnitOfWork(ABC):
         await self.session.close()
         await self.session.bind.dispose()
         self.session = None
+
+    @property
+    def user_id(self) -> UUID | None:
+        """Retorna o ID do usuário autenticado ou None se não houver usuário."""
+        return self.user.id if self.user else None
 
     async def commit(self) -> None:
         """Confirma todas as alterações na sessão."""

@@ -5,6 +5,7 @@ from uuid import UUID
 
 import uuid7
 
+from business_contexts.domain.value_objects.enums import AuditConstant, EntityType
 from business_contexts.domain.events.user import (
     UserCreated,
     UserDeleted,
@@ -21,7 +22,6 @@ class User(Aggregate, UserSecurity):
     company: UUID
     email: str
     cpf: str
-    active: bool
     admin: bool
 
     def __hash__(self) -> int:
@@ -62,14 +62,24 @@ class User(Aggregate, UserSecurity):
             admin=admin,
         )
 
-    def create(self) -> None:
+    def create(self, user_id: UUID | None = None) -> None:
         """Marca o agregado para inserção e emite evento de criação."""
         self._operation_type = OperationType.INSERT
+        self._set_create_audit(user_id)
+
+        new_data = {
+            "email": self.email,
+            "cpf": self.cpf,
+            "active": self.active,
+            "admin": self.admin,
+        }
 
         self.add_event(
             UserCreated(
                 id=self.id,
                 company=self.company,
+                entity_type=EntityType.USER,
+                new_data=new_data,
             )
         )
 
@@ -79,6 +89,7 @@ class User(Aggregate, UserSecurity):
         password: str | None = None,
         active: bool | None = None,
         admin: bool | None = None,
+        user_id: UUID | None = None,
     ) -> None:
         """
         Atualiza os dados do usuário e emite evento de atualização.
@@ -88,35 +99,51 @@ class User(Aggregate, UserSecurity):
             password: Nova senha (opcional).
             active: Novo status de ativação (opcional).
             admin: Novo status de administrador (opcional).
+            user_id: ID do usuário que está realizando a atualização (opcional).
         """
         self._operation_type = OperationType.UPDATE
+        self._set_update_audit(user_id)
 
-        if email is not None:
-            self.email = email
+        old_data: dict = {}
+        new_data: dict = {}
+
+        self._track_change(old_data, new_data, "email", email)
+        self._track_change(old_data, new_data, "active", active)
+        self._track_change(old_data, new_data, "admin", admin)
+
         if password is not None:
+            new_data["password"] = AuditConstant.REDACTED_PASSWORD
             self._password_hash = self.encrypt_password(password)
-        if active is not None:
-            self.active = active
-        if admin is not None:
-            self.admin = admin
 
         self.add_event(
             UserUpdated(
                 id=self.id,
                 company=self.company,
+                entity_type=EntityType.USER,
+                old_data=old_data,
+                new_data=new_data,
             )
         )
 
-    def delete(self) -> None:
+    def delete(self, user_id: UUID | None = None) -> None:
         """Marca o agregado como deletado (soft delete) e emite evento de exclusão."""
         self._operation_type = OperationType.DELETE
 
-        self.deleted = True
+        old_data = {
+            "email": self.email,
+            "cpf": self.cpf,
+            "active": self.active,
+            "admin": self.admin,
+        }
+
+        self._set_delete_audit(user_id)
 
         self.add_event(
             UserDeleted(
                 id=self.id,
                 company=self.company,
+                entity_type=EntityType.USER,
+                old_data=old_data,
             )
         )
 
@@ -129,7 +156,6 @@ class PublicUser(Aggregate, UserSecurity):
     company: UUID
     email_encrypted: bytes
     email_hash: str
-    active: bool
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -183,3 +209,4 @@ class PublicUser(Aggregate, UserSecurity):
     def remove(self) -> None:
         """Marca o agregado como deletado (soft delete)."""
         self._operation_type = OperationType.DELETE
+        self._set_delete_audit(user_id=None)

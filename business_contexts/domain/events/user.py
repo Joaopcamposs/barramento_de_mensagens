@@ -4,27 +4,28 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from business_contexts.consts import FIRST_USER_CPF, FIRST_USER_PASSWORD
+from messagebus.entities import AuditableEvent
 from messagebus.messagebus import Event
 
 
-@dataclass
-class UserCreated(Event):
+@dataclass(kw_only=True)
+class UserCreated(AuditableEvent, Event):
     """Evento emitido quando um usuário é criado."""
 
     id: UUID
     company: UUID
 
 
-@dataclass
-class UserUpdated(Event):
+@dataclass(kw_only=True)
+class UserUpdated(AuditableEvent, Event):
     """Evento emitido quando um usuário é atualizado."""
 
     id: UUID
     company: UUID
 
 
-@dataclass
-class UserDeleted(Event):
+@dataclass(kw_only=True)
+class UserDeleted(AuditableEvent, Event):
     """Evento emitido quando um usuário é excluído."""
 
     id: UUID

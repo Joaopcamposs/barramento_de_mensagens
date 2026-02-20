@@ -77,7 +77,7 @@ class TestCreateUser:
         assert users[0].company == company_id
         assert users[0].active is True
         assert users[0].admin is False
-        assert users[0].deleted is False
+        assert users[0].deleted_at is None
         assert isinstance(users[0].id, UUID)
 
     async def test_create_user_with_admin_flag(self, engine) -> None:
@@ -215,7 +215,7 @@ class TestDeleteUser:
 
         assert len(users) == 1
         assert users[0].email == "soft@example.com"
-        assert users[0].deleted is True
+        assert users[0].is_deleted is True
 
     async def test_delete_nonexistent_user_raises_error(self, engine) -> None:
         """Verifica que excluir usuário inexistente lança exceção."""
@@ -257,7 +257,7 @@ class TestViewUser:
         assert users[0].id == user_id
         assert users[0].email == "view@example.com"
         assert users[0].company == company_id
-        assert users[0].deleted is False
+        assert users[0].deleted_at is None
 
     async def test_view_nonexistent_user_returns_empty_list(self, engine) -> None:
         """Verifica que consultar usuário inexistente retorna lista vazia."""
@@ -471,4 +471,4 @@ class TestFullAPIFlow:
             include_deleted=True,
         )
         assert len(users) == 1
-        assert users[0].deleted is True
+        assert users[0].is_deleted is True

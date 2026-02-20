@@ -3,25 +3,26 @@
 from dataclasses import dataclass
 from uuid import UUID
 
+from messagebus.entities import AuditableEvent
 from messagebus.messagebus import Event
 
 
-@dataclass
-class CompanyCreated(Event):
+@dataclass(kw_only=True)
+class CompanyCreated(AuditableEvent, Event):
     """Evento emitido quando uma empresa é criada."""
 
     id: UUID
 
 
-@dataclass
-class CompanyUpdated(Event):
+@dataclass(kw_only=True)
+class CompanyUpdated(AuditableEvent, Event):
     """Evento emitido quando uma empresa é atualizada."""
 
     id: UUID
 
 
-@dataclass
-class CompanyDeleted(Event):
+@dataclass(kw_only=True)
+class CompanyDeleted(AuditableEvent, Event):
     """Evento emitido quando uma empresa é excluída."""
 
     id: UUID

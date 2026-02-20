@@ -35,4 +35,3 @@ class ReadUserSchema(BaseModel):
     cpf: str
     active: bool
     admin: bool
-    deleted: bool

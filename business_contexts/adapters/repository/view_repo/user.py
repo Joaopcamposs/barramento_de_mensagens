@@ -31,9 +31,7 @@ class UserViewRepo(ViewRepository):
                 UserAggregate.email == email,
             )
             if not include_deleted:
-                query = query.where(
-                    UserAggregate.deleted == False  # noqa: E712
-                )
+                query = query.where(UserAggregate.deleted_at.is_(None))
 
             user = (await session.execute(query)).scalar_one_or_none()
             if not user:
@@ -46,7 +44,12 @@ class UserViewRepo(ViewRepository):
                 cpf=user.cpf,
                 active=user.active,
                 admin=user.admin,
-                deleted=user.deleted,
+                created_at=user.created_at,
+                created_by=user.created_by,
+                updated_at=user.updated_at,
+                updated_by=user.updated_by,
+                deleted_at=user.deleted_at,
+                deleted_by=user.deleted_by,
             )
 
         return entity
@@ -64,7 +67,7 @@ class UserViewRepo(ViewRepository):
         async with self.session as session:
             query = select(UserAggregate).where(
                 UserAggregate.id == id,
-                UserAggregate.deleted == False,  # noqa: E712
+                UserAggregate.deleted_at.is_(None),
             )
 
             user = (await session.execute(query)).scalar_one_or_none()
@@ -78,8 +81,13 @@ class UserViewRepo(ViewRepository):
                 cpf=user.cpf,
                 active=user.active,
                 admin=user.admin,
-                deleted=user.deleted,
                 _password_hash=user.password_hash,
+                created_at=user.created_at,
+                created_by=user.created_by,
+                updated_at=user.updated_at,
+                updated_by=user.updated_by,
+                deleted_at=user.deleted_at,
+                deleted_by=user.deleted_by,
             )
 
         return entity
@@ -97,9 +105,7 @@ class UserViewRepo(ViewRepository):
         async with self.session as session:
             query = select(UserAggregate).where()
             if not include_deleted:
-                query = query.where(
-                    UserAggregate.deleted == False  # noqa: E712
-                )
+                query = query.where(UserAggregate.deleted_at.is_(None))
 
             users = (await session.execute(query)).scalars()
             if not users:
@@ -113,7 +119,12 @@ class UserViewRepo(ViewRepository):
                     cpf=user.cpf,
                     active=user.active,
                     admin=user.admin,
-                    deleted=user.deleted,
+                    created_at=user.created_at,
+                    created_by=user.created_by,
+                    updated_at=user.updated_at,
+                    updated_by=user.updated_by,
+                    deleted_at=user.deleted_at,
+                    deleted_by=user.deleted_by,
                 )
                 for user in users
             ]
@@ -134,7 +145,7 @@ class UserViewRepo(ViewRepository):
                 await session.execute(
                     select(PublicUserAggregate).where(
                         PublicUserAggregate.email_hash == email_hash,
-                        PublicUserAggregate.deleted.is_(False),
+                        PublicUserAggregate.deleted_at.is_(None),
                     )
                 )
             ).scalar_one_or_none()

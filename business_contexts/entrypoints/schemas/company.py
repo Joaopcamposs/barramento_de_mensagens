@@ -40,4 +40,3 @@ class ReadCompanySchema(BaseModel):
     cpf: str
     cnpj: str | None = None
     active: bool
-    deleted: bool

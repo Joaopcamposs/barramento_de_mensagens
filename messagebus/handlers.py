@@ -23,6 +23,11 @@ from business_contexts.domain.events.user import (
     UserDeleted,
     UserUpdated,
 )
+from business_contexts.services.handlers.audit_log import (
+    audit_entity_created,
+    audit_entity_deleted,
+    audit_entity_updated,
+)
 from business_contexts.services.handlers.company import (
     company_created,
     company_deleted,
@@ -59,12 +64,12 @@ COMMAND_HANDLERS: CommandHandlers = CommandHandlers(
 
 EVENT_HANDLERS: EventHandlers = EventHandlers(
     {
-        CompanyCreated: [company_created],
-        CompanyUpdated: [company_updated],
-        CompanyDeleted: [company_deleted],
-        UserCreated: [user_created, create_public_user],
-        UserUpdated: [user_updated, update_public_user],
-        UserDeleted: [user_deleted, remove_public_user],
+        CompanyCreated: [company_created, audit_entity_created],
+        CompanyUpdated: [company_updated, audit_entity_updated],
+        CompanyDeleted: [company_deleted, audit_entity_deleted],
+        UserCreated: [user_created, create_public_user, audit_entity_created],
+        UserUpdated: [user_updated, update_public_user, audit_entity_updated],
+        UserDeleted: [user_deleted, remove_public_user, audit_entity_deleted],
         TimeToCreateInitialCompanyUser: [create_user],
         TimeToCreateCompanyAdminUser: [create_user],
     }

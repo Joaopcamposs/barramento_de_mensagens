@@ -6,6 +6,7 @@ from uuid import UUID
 import uuid7
 
 from business_contexts.consts import ADMIN_USER_PREFIX
+from business_contexts.domain.value_objects.enums import EntityType
 from business_contexts.domain.events.company import (
     CompanyCreated,
     CompanyDeleted,
@@ -28,7 +29,6 @@ class Company(Aggregate):
     responsible_name: str
     email: str
     cpf: str
-    active: bool
     trade_name: str | None = None
     cnpj: str | None = None
 
@@ -86,6 +86,7 @@ class Company(Aggregate):
         self,
         password: str,
         should_create_user: bool = True,
+        user_id: UUID | None = None,
     ) -> None:
         """
         Marca o agregado para inserção e emite eventos de criação.
@@ -95,15 +96,28 @@ class Company(Aggregate):
         também emite TimeToCreateCompanyAdminUser.
 
         Args:
-            user_id: ID do usuário que está criando a empresa (opcional).
             password: Senha para o usuário inicial da empresa.
             should_create_user: Se True, emite eventos para criar usuários.
+            user_id: ID do usuário que está criando a empresa (opcional).
         """
         self._operation_type = OperationType.INSERT
+        self._set_create_audit(user_id)
+
+        new_data = {
+            "legal_name": self.legal_name,
+            "trade_name": self.trade_name,
+            "responsible_name": self.responsible_name,
+            "email": self.email,
+            "cpf": self.cpf,
+            "cnpj": self.cnpj,
+            "active": self.active,
+        }
 
         self.add_event(
             CompanyCreated(
                 id=self.id,
+                entity_type=EntityType.COMPANY,
+                new_data=new_data,
             )
         )
 
@@ -134,6 +148,7 @@ class Company(Aggregate):
         responsible_name: str | None = None,
         email: str | None = None,
         active: bool | None = None,
+        user_id: UUID | None = None,
     ) -> None:
         """
         Atualiza os dados da empresa e emite evento de atualização.
@@ -144,34 +159,49 @@ class Company(Aggregate):
             responsible_name: Novo nome do responsável (opcional).
             email: Novo email (opcional).
             active: Novo status de ativação (opcional).
+            user_id: ID do usuário que está realizando a atualização (opcional).
         """
         self._operation_type = OperationType.UPDATE
+        self._set_update_audit(user_id)
 
-        if legal_name is not None:
-            self.legal_name = legal_name
-        if trade_name is not None:
-            self.trade_name = trade_name
-        if responsible_name is not None:
-            self.responsible_name = responsible_name
-        if email is not None:
-            self.email = email
-        if active is not None:
-            self.active = active
+        old_data: dict = {}
+        new_data: dict = {}
+
+        self._track_change(old_data, new_data, "legal_name", legal_name)
+        self._track_change(old_data, new_data, "trade_name", trade_name)
+        self._track_change(old_data, new_data, "responsible_name", responsible_name)
+        self._track_change(old_data, new_data, "email", email)
+        self._track_change(old_data, new_data, "active", active)
 
         self.add_event(
             CompanyUpdated(
                 id=self.id,
+                entity_type=EntityType.COMPANY,
+                old_data=old_data,
+                new_data=new_data,
             )
         )
 
-    def delete(self) -> None:
+    def delete(self, user_id: UUID | None = None) -> None:
         """Marca o agregado como deletado (soft delete) e emite evento de exclusão."""
         self._operation_type = OperationType.DELETE
 
-        self.deleted = True
+        old_data = {
+            "legal_name": self.legal_name,
+            "trade_name": self.trade_name,
+            "responsible_name": self.responsible_name,
+            "email": self.email,
+            "cpf": self.cpf,
+            "cnpj": self.cnpj,
+            "active": self.active,
+        }
+
+        self._set_delete_audit(user_id)
 
         self.add_event(
             CompanyDeleted(
                 id=self.id,
+                entity_type=EntityType.COMPANY,
+                old_data=old_data,
             )
         )

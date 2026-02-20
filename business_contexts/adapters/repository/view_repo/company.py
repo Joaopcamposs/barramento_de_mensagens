@@ -28,9 +28,7 @@ class CompanyViewRepo(ViewRepository):
                 CompanyAggregate.legal_name == legal_name
             )
             if not include_deleted:
-                query = query.where(
-                    CompanyAggregate.deleted == False  # noqa: E712
-                )
+                query = query.where(CompanyAggregate.deleted_at.is_(None))
 
             company = (await session.execute(query)).scalar_one_or_none()
             if not company:
@@ -45,7 +43,12 @@ class CompanyViewRepo(ViewRepository):
                 cpf=company.cpf,
                 cnpj=company.cnpj,
                 active=company.active,
-                deleted=company.deleted,
+                created_at=company.created_at,
+                created_by=company.created_by,
+                updated_at=company.updated_at,
+                updated_by=company.updated_by,
+                deleted_at=company.deleted_at,
+                deleted_by=company.deleted_by,
             )
 
         return entity
@@ -63,9 +66,7 @@ class CompanyViewRepo(ViewRepository):
         async with self.session as session:
             query = select(CompanyAggregate)
             if not include_deleted:
-                query = query.where(
-                    CompanyAggregate.deleted == False  # noqa: E712
-                )
+                query = query.where(CompanyAggregate.deleted_at.is_(None))
 
             companies = (await session.execute(query)).scalars()
             if not companies:
@@ -81,7 +82,12 @@ class CompanyViewRepo(ViewRepository):
                     cpf=company.cpf,
                     cnpj=company.cnpj,
                     active=company.active,
-                    deleted=company.deleted,
+                    created_at=company.created_at,
+                    created_by=company.created_by,
+                    updated_at=company.updated_at,
+                    updated_by=company.updated_by,
+                    deleted_at=company.deleted_at,
+                    deleted_by=company.deleted_by,
                 )
                 for company in companies
             ]

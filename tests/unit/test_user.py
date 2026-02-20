@@ -59,7 +59,7 @@ class TestUserAggregate:
         assert user.password_hash.startswith("$2b$")
         assert user.active is True
         assert user.admin is False
-        assert user.deleted is False
+        assert user.deleted_at is None
 
     def test_create_aggregate_generates_unique_ids(self) -> None:
         """Verifica que cada chamada gera um ID diferente."""
@@ -225,7 +225,7 @@ class TestUserAggregate:
         user.delete()
 
         assert user._operation_type == OperationType.DELETE
-        assert user.deleted is True
+        assert user.is_deleted is True
 
     def test_delete_emits_user_deleted_event(self) -> None:
         """Verifica que delete() emite o evento UserDeleted."""
@@ -430,7 +430,6 @@ class TestUserEntity:
             cpf="12345678901",
             active=True,
             admin=False,
-            deleted=False,
         )
 
         assert entity.id == uid
@@ -439,7 +438,7 @@ class TestUserEntity:
         assert entity.cpf == "12345678901"
         assert entity.active is True
         assert entity.admin is False
-        assert entity.deleted is False
+        assert entity.deleted_at is None
 
     def test_user_entity_inherits_user_security(self) -> None:
         """Verifica que a entidade User herda de UserSecurity."""
@@ -450,7 +449,6 @@ class TestUserEntity:
             cpf="12345678901",
             active=True,
             admin=False,
-            deleted=False,
         )
 
         assert isinstance(entity, UserSecurity)
@@ -511,7 +509,6 @@ class TestUserSchemas:
             cpf="12345678901",
             active=True,
             admin=False,
-            deleted=False,
         )
 
         assert schema.id == uid
@@ -520,7 +517,6 @@ class TestUserSchemas:
         assert schema.cpf == "12345678901"
         assert schema.active is True
         assert schema.admin is False
-        assert schema.deleted is False
 
 
 class TestUserAggregateBelongsToCompany:

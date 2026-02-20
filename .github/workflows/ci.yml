@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Check formatting (ruff format)
+        run: uv run ruff format --check .
+
+      - name: Auto-fix with ruff
+        run: uv run ruff check . --fix
+
+      - name: Check lint (ruff check)
+        run: uv run ruff check .
+
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    env:
+      TEST_ENV: "true"
+      AES_KEY: "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
+      SECRET_KEY: "test_secret_key_for_jwt_with_32_bytes_length"
+      ALGORITHM: "HS256"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+      FIRST_USER_CPF: "00000000000"
+      FIRST_USER_PASSWORD: "admin_test_password"
+      ADMIN_USER_PREFIX: "admin"
+      FIRST_COMPANY_ID: ""
+      FIRST_USER_EMAIL: "admin@test.com"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run unit tests
+        run: uv run python -m pytest tests/unit/ -vvv --tb=long --capture=no
+
+
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        ports:
+          - "54323:5432"
+        options: >-
+          --health-cmd "pg_isready -U postgres -d test_db"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_ENV: "true"
+      AES_KEY: "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
+      SECRET_KEY: "test_secret_key_for_jwt_with_32_bytes_length"
+      ALGORITHM: "HS256"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+      FIRST_USER_CPF: "00000000000"
+      FIRST_USER_PASSWORD: "admin_test_password"
+      ADMIN_USER_PREFIX: "admin"
+      FIRST_COMPANY_ID: ""
+      FIRST_USER_EMAIL: "admin@test.com"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run integration tests
+        run: uv run python -m pytest tests/integration/ -vvv --tb=long --capture=no
