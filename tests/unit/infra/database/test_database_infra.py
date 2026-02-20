@@ -74,6 +74,7 @@ class TestDatabaseModule:
     ) -> None:
         """Garante reutilização da engine global quando não forçada."""
         created: list[str] = []
+        monkeypatch.setenv("DB_NAME", "test_db")
 
         def fake_create(*args: Any, **kwargs: Any) -> str:
             created.append("engine")
@@ -94,6 +95,7 @@ class TestDatabaseModule:
     ) -> None:
         """Cria nova engine quando force_create_engine é verdadeiro."""
         calls: list[dict[str, Any]] = []
+        monkeypatch.setenv("DB_NAME", "test_db")
 
         def fake_create(*args: Any, **kwargs: Any) -> str:
             calls.append(kwargs)
