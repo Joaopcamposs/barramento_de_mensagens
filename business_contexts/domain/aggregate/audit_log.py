@@ -1,7 +1,6 @@
 """Módulo do agregado AuditLog."""
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from uuid import UUID
 
 import uuid7
@@ -62,4 +61,4 @@ class AuditLog(Aggregate):
     def create(self) -> None:
         """Marca o agregado para inserção."""
         self._operation_type = OperationType.INSERT
-        self.created_at = datetime.now(timezone.utc)
+        self._set_create_audit(user_id=None)
