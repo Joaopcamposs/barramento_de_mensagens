@@ -477,14 +477,13 @@ class TestUserSchemas:
     def test_update_user_schema(self) -> None:
         """Verifica o schema de atualização de usuário."""
         schema = UpdateUserSchema(
-            email="test@example.com",
             new_email="new@example.com",
             new_password="newpwd",
             new_active=False,
             new_admin=True,
         )
 
-        assert schema.email == "test@example.com"
+        assert schema.new_email == "new@example.com"
         assert schema.new_email == "new@example.com"
         assert schema.new_password == "newpwd"
         assert schema.new_active is False
@@ -492,7 +491,7 @@ class TestUserSchemas:
 
     def test_update_user_schema_optional_fields(self) -> None:
         """Verifica que campos opcionais do UpdateUserSchema são None por padrão."""
-        schema = UpdateUserSchema(email="test@example.com")
+        schema = UpdateUserSchema()
 
         assert schema.new_email is None
         assert schema.new_password is None

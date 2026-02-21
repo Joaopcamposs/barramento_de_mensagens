@@ -38,7 +38,7 @@ class TestCompanyApi:
         assert created_id is not None
 
         await company_api.put_company(
-            UpdateCompanySchema(legal_name="Acme", new_legal_name="Acme New")
+            "Acme", UpdateCompanySchema(new_legal_name="Acme New")
         )
 
         monkeypatch.setattr(company_api, "UnitOfWork", lambda **_: FakeUoW(user=current))

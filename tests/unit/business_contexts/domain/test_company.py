@@ -413,11 +413,10 @@ class TestCompanySchemas:
     def test_update_company_schema(self) -> None:
         """Verifica o schema de atualização de empresa."""
         schema = UpdateCompanySchema(
-            legal_name="Acme Corp",
             new_legal_name="New Acme",
         )
 
-        assert schema.legal_name == "Acme Corp"
+        assert schema.new_legal_name == "New Acme"
         assert schema.new_legal_name == "New Acme"
         assert schema.new_trade_name is None
         assert schema.new_responsible_name is None

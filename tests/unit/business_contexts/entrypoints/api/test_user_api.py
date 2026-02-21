@@ -35,7 +35,7 @@ class TestUserApi:
         assert created_id is not None
 
         await user_api.put_user(
-            UpdateUserSchema(email="user@example.com", new_email="new@example.com")
+            "user@example.com", UpdateUserSchema(new_email="new@example.com")
         )
 
         monkeypatch.setattr(user_api, "UnitOfWork", lambda **_: FakeUoW(user=current))

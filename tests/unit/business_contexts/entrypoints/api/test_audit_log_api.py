@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 import pytest
 import uuid7
 
+from business_contexts.domain.value_objects.enums import EntityType
 from business_contexts.entrypoints.api import audit_log as audit_api
 from business_contexts.entrypoints.schemas.audit_log import ReadAuditLogSchema
 from tests.unit.helpers import FakeUoW
@@ -42,7 +43,7 @@ class TestAuditApi:
         )
 
         response = await audit_api.get_audit_logs(
-            entity_type="User", entity_id=uuid7.create()
+            entity_type=EntityType.USER, entity_id=uuid7.create()
         )
         assert len(response) == 1
 
