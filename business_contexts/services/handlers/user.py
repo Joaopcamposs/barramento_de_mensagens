@@ -20,7 +20,7 @@ from business_contexts.domain.events.user import (
     UserDeleted,
     UserUpdated,
 )
-from messagebus.domains import Domain
+from business_contexts.domains import Domain
 from messagebus.messagebus import logger
 from messagebus.unity_of_work import UnitOfWork
 
@@ -43,7 +43,7 @@ async def create_user(
             active=command_or_event.active,
             admin=command_or_event.admin,
         )
-        user.create()
+        user.create(user_id=uow.user_id)
 
         await domain_repo.add(user)
         await uow.commit()
@@ -64,6 +64,7 @@ async def update_user(command: UpdateUser, uow: UnitOfWork) -> None:
             password=command.new_password,
             active=command.new_active,
             admin=command.new_admin,
+            user_id=uow.user_id,
         )
 
         await domain_repo.add(user)
@@ -78,7 +79,7 @@ async def delete_user(command: DeleteUser, uow: UnitOfWork) -> None:
         user = await domain_repo.get_by_email(
             email=command.email,
         )
-        user.delete()
+        user.delete(user_id=uow.user_id)
 
         await domain_repo.remove(user)
         await uow.commit()

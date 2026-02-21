@@ -16,7 +16,7 @@ from business_contexts.entrypoints.schemas.company import (
     UpdateCompanySchema,
 )
 from business_contexts.services.handlers.security import current_user, get_current_user
-from messagebus.bootstrap import bootstrap
+from business_contexts.bootstrap import bootstrap
 from messagebus.unity_of_work import UnitOfWork
 
 router = APIRouter(
@@ -44,12 +44,12 @@ async def post_company(body: CreateCompanySchema) -> UUID:
 
 
 @router.put("/company", status_code=status.HTTP_200_OK)
-async def put_company(body: UpdateCompanySchema) -> None:
+async def put_company(legal_name: str, body: UpdateCompanySchema) -> None:
     """Atualiza uma empresa existente."""
     bus = bootstrap(user=current_user.get())
 
     command = UpdateCompany(
-        legal_name=body.legal_name,
+        legal_name=legal_name,
         new_legal_name=body.new_legal_name,
         new_trade_name=body.new_trade_name,
         new_responsible_name=body.new_responsible_name,

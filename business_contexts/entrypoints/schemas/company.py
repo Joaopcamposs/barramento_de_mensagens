@@ -21,7 +21,6 @@ class CreateCompanySchema(BaseModel):
 class UpdateCompanySchema(BaseModel):
     """Schema para atualização de empresa."""
 
-    legal_name: str
     new_legal_name: str | None = None
     new_trade_name: str | None = None
     new_responsible_name: str | None = None
@@ -40,4 +39,3 @@ class ReadCompanySchema(BaseModel):
     cpf: str
     cnpj: str | None = None
     active: bool
-    deleted: bool

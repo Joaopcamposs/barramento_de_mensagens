@@ -4,16 +4,16 @@ from abc import abstractmethod
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import insert, select, update
-from sqlalchemy.sql import Executable
+from sqlalchemy import select
 
 from business_contexts.adapters.repository.mixins.public_user import PublicUserMixin
+from business_contexts.adapters.repository.mixins.upsert import UpsertMixin
 from business_contexts.domain.aggregate.user import User
 from business_contexts.domain.excecoes import (
     UserAlreadyRegistered,
     UserNotFound,
 )
-from messagebus.entities import DomainRepository, OperationType
+from messagebus.entities import DomainRepository
 
 
 class AbstractUserDomainRepo(DomainRepository):
@@ -67,7 +67,7 @@ class AbstractUserDomainRepo(DomainRepository):
         raise NotImplementedError()
 
 
-class UserDomainRepo(AbstractUserDomainRepo, PublicUserMixin):
+class UserDomainRepo(AbstractUserDomainRepo, PublicUserMixin, UpsertMixin):
     """Implementação concreta do repositório de domínio de User."""
 
     async def create_aggregate(
@@ -101,7 +101,7 @@ class UserDomainRepo(AbstractUserDomainRepo, PublicUserMixin):
                 await session.execute(
                     select(User).where(
                         User.email == email,
-                        User.deleted == False,  # noqa: E712
+                        User.deleted_at.is_(None),
                     )
                 )
             ).scalar_one_or_none()
@@ -135,7 +135,7 @@ class UserDomainRepo(AbstractUserDomainRepo, PublicUserMixin):
                 await session.execute(
                     select(User).where(
                         User.email == email,
-                        User.deleted == False,  # noqa: E712
+                        User.deleted_at.is_(None),
                     )
                 )
             ).scalar_one_or_none()
@@ -150,7 +150,12 @@ class UserDomainRepo(AbstractUserDomainRepo, PublicUserMixin):
                 _password_hash=user.password_hash,
                 active=user.active,
                 admin=user.admin,
-                deleted=user.deleted,
+                created_at=user.created_at,
+                created_by=user.created_by,
+                updated_at=user.updated_at,
+                updated_by=user.updated_by,
+                deleted_at=user.deleted_at,
+                deleted_by=user.deleted_by,
             )
 
         return aggregate
@@ -173,7 +178,7 @@ class UserDomainRepo(AbstractUserDomainRepo, PublicUserMixin):
                 await session.execute(
                     select(User).where(
                         User.id == id,
-                        User.deleted == False,  # noqa: E712
+                        User.deleted_at.is_(None),
                     )
                 )
             ).scalar_one_or_none()
@@ -188,15 +193,17 @@ class UserDomainRepo(AbstractUserDomainRepo, PublicUserMixin):
                 _password_hash=user.password_hash,
                 active=user.active,
                 admin=user.admin,
-                deleted=user.deleted,
+                created_at=user.created_at,
+                created_by=user.created_by,
+                updated_at=user.updated_at,
+                updated_by=user.updated_by,
+                deleted_at=user.deleted_at,
+                deleted_by=user.deleted_by,
             )
 
         return aggregate
 
-    async def _add(
-        self,
-        user: User,
-    ) -> None:
+    async def _add(self, user: User) -> None:
         """Persiste um usuário no banco de dados (inserção ou atualização)."""
         data = {
             "id": user.id,
@@ -206,22 +213,15 @@ class UserDomainRepo(AbstractUserDomainRepo, PublicUserMixin):
             "_password_hash": user.password_hash,
             "active": user.active,
             "admin": user.admin,
-            "deleted": user.deleted,
+            "created_at": user.created_at,
+            "created_by": user.created_by,
+            "updated_at": user.updated_at,
+            "updated_by": user.updated_by,
+            "deleted_at": user.deleted_at,
+            "deleted_by": user.deleted_by,
         }
-
-        operation: Executable
-        match user.operation_type:
-            case OperationType.INSERT:
-                operation = insert(User).values(data)
-            case OperationType.UPDATE:
-                operation = update(User).where(User.id == user.id).values(data)
-            case _:
-                raise ValueError("Unsupported operation type for domain repository.")
-
-        await self.session.execute(operation)
+        await self._execute_upsert(User, user, data)
 
     async def _remove(self, user: User) -> None:
         """Marca um usuário como deletado no banco de dados (soft delete)."""
-        operation = update(User).where(User.id == user.id).values({"deleted": True})
-
-        await self.session.execute(operation)
+        await self._execute_soft_delete(User, user)

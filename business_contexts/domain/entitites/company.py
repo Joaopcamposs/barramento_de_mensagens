@@ -3,9 +3,11 @@
 from dataclasses import dataclass
 from uuid import UUID
 
+from messagebus.entities import AuditReadBase
 
-@dataclass(frozen=True)
-class Company:
+
+@dataclass(frozen=True, kw_only=True)
+class Company(AuditReadBase):
     """Entidade de leitura que representa uma empresa."""
 
     id: UUID
@@ -13,7 +15,5 @@ class Company:
     responsible_name: str
     email: str
     cpf: str
-    active: bool
-    deleted: bool
     trade_name: str | None = None
     cnpj: str | None = None

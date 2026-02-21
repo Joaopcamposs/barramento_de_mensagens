@@ -1,6 +1,6 @@
 """Mapeamento ORM da tabela company."""
 
-from sqlalchemy import UUID, Boolean, Column, Index, String, Table, text
+from sqlalchemy import UUID, Boolean, Column, DateTime, Index, String, Table, text
 
 from business_contexts.domain.aggregate.company import Company
 from infra.database import mapper_registry
@@ -16,12 +16,17 @@ company = Table(
     Column("cpf", String(14), nullable=False),
     Column("cnpj", String(18), nullable=True),
     Column("active", Boolean, nullable=False, default=True),
-    Column("deleted", Boolean, nullable=False, default=False),
+    Column("created_at", DateTime(timezone=True), nullable=True),
+    Column("created_by", UUID, nullable=True),
+    Column("updated_at", DateTime(timezone=True), nullable=True),
+    Column("updated_by", UUID, nullable=True),
+    Column("deleted_at", DateTime(timezone=True), nullable=True),
+    Column("deleted_by", UUID, nullable=True),
     Index(
-        "ix_company_legal_name_deleted",
+        "ix_company_legal_name_not_deleted",
         "legal_name",
         unique=True,
-        postgresql_where=text("deleted = false"),
+        postgresql_where=text("deleted_at IS NULL"),
     ),
 )
 

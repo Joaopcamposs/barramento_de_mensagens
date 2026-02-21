@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from business_contexts.entrypoints.api.audit_log import router as audit_log_router
 from business_contexts.entrypoints.api.company import router as company_router
 from business_contexts.entrypoints.api.security import security_router
 from business_contexts.entrypoints.api.user import router as user_router
@@ -37,6 +38,7 @@ async def health_check() -> dict[str, str]:
     return {"message": "API is running!"}
 
 
+app.include_router(audit_log_router)
 app.include_router(company_router)
 app.include_router(user_router)
 app.include_router(security_router)

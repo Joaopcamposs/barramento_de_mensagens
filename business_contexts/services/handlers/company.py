@@ -17,7 +17,7 @@ from business_contexts.domain.events.company import (
     CompanyUpdated,
 )
 from infra.database import delete_schema
-from messagebus.domains import Domain
+from business_contexts.domains import Domain
 from messagebus.messagebus import logger
 from messagebus.unity_of_work import UnitOfWork
 
@@ -41,6 +41,7 @@ async def create_company(command: CreateCompany, uow: UnitOfWork) -> UUID:
             company.create(
                 password=command.password,
                 should_create_user=command.should_create_user,
+                user_id=uow.user_id,
             )
 
             await domain_repo.add(company)
@@ -67,6 +68,7 @@ async def update_company(command: UpdateCompany, uow: UnitOfWork) -> None:
             responsible_name=command.new_responsible_name,
             email=command.new_email,
             active=command.new_active,
+            user_id=uow.user_id,
         )
 
         await domain_repo.add(company)
@@ -81,7 +83,7 @@ async def delete_company(command: DeleteCompany, uow: UnitOfWork) -> None:
         company = await domain_repo.get_by_legal_name(
             legal_name=command.legal_name,
         )
-        company.delete()
+        company.delete(user_id=uow.user_id)
 
         await domain_repo.remove(company)
         await uow.commit()

@@ -14,7 +14,7 @@ from business_contexts.domain.commands.security import AuthenticateUser
 from business_contexts.domain.entitites.user import User
 from business_contexts.domain.excecoes import CredentialsException
 from business_contexts.entrypoints.schemas.security import Token
-from messagebus.domains import Domain
+from business_contexts.domains import Domain
 from messagebus.unity_of_work import UnitOfWork
 
 current_user: ContextVar["User"] = ContextVar("current_user")

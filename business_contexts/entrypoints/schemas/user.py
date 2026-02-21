@@ -18,7 +18,6 @@ class CreateUserSchema(BaseModel):
 class UpdateUserSchema(BaseModel):
     """Schema para atualização de usuário."""
 
-    email: str
     new_email: str | None = None
     new_password: str | None = None
     new_cpf: str | None = None
@@ -35,4 +34,3 @@ class ReadUserSchema(BaseModel):
     cpf: str
     active: bool
     admin: bool
-    deleted: bool

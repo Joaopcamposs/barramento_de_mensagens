@@ -4,16 +4,15 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Generator
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from infra.database import default_async_sql_session_factory
-from infra.database.schema_handlers import create_full_schema_within_transaction
 from messagebus.entities import DomainRepository, UserBase, ViewRepository
 
 if TYPE_CHECKING:
-    from messagebus.domains import Domain
+    from business_contexts.domains import Domain
     from messagebus.messagebus import Event
 
 
@@ -43,7 +42,7 @@ class AbstractUnitOfWork(ABC):
 
     def __init__(
         self,
-        session_factory: AsyncSession = default_async_sql_session_factory,
+        session_factory: Callable[..., Any],
         user: UserBase | None = None,
         schema: str | None = None,
         create_schema: bool = False,
@@ -56,7 +55,7 @@ class AbstractUnitOfWork(ABC):
         ):
             raise UnitOfWorkWithProblem("The user does not belong to this schema.")
 
-        self.sql_session_factory = session_factory or default_async_sql_session_factory
+        self.sql_session_factory = session_factory
         self.user = user
         self.schema = schema or (str(self.user.company) if self.user else None)
         self.create_schema = create_schema
@@ -101,6 +100,11 @@ class AbstractUnitOfWork(ABC):
         await self.session.bind.dispose()
         self.session = None
 
+    @property
+    def user_id(self) -> UUID | None:
+        """Retorna o ID do usuário autenticado ou None se não houver usuário."""
+        return self.user.id if self.user else None
+
     async def commit(self) -> None:
         """Confirma todas as alterações na sessão."""
         await self.session.commit()
@@ -135,6 +139,7 @@ class UnitOfWork(AbstractUnitOfWork, Generic[WRITE_REPO, READ_REPO]):
 
     def __init__(
         self,
+        session_factory: Callable[..., Any] | None = None,
         user: UserBase | None = None,
         schema: str | None = None,
         create_schema: bool = False,
@@ -142,14 +147,36 @@ class UnitOfWork(AbstractUnitOfWork, Generic[WRITE_REPO, READ_REPO]):
     ) -> None:
         self.read_only = read_only
 
-        super().__init__(user=user, schema=schema, create_schema=create_schema)
+        # dependencias de infra
+        sql_session_factory = session_factory
+        if not sql_session_factory:
+            from infra.database import default_async_sql_session_factory
+
+            sql_session_factory = default_async_sql_session_factory
+
+        self.create_full_schema_within_transaction = None
+        if create_schema:
+            from infra.database.schema_handlers import (
+                create_full_schema_within_transaction,
+            )
+
+            self.create_full_schema_within_transaction = (
+                create_full_schema_within_transaction
+            )
+
+        super().__init__(
+            session_factory=sql_session_factory,
+            user=user,
+            schema=schema,
+            create_schema=create_schema,
+        )
 
     async def __aenter__(self) -> UnitOfWork:
         """Entra no contexto, criando sessões de leitura e escrita."""
         self.committed = False
 
         if self.create_schema:  # type: ignore[has-type]
-            self.session = await create_full_schema_within_transaction(
+            self.session = await self.create_full_schema_within_transaction(
                 session_factory=self.sql_session_factory,
                 schema_id=self.schema,
             )

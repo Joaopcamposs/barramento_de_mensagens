@@ -10,7 +10,7 @@ from business_contexts.domain.entitites.user import User
 from business_contexts.entrypoints.schemas.security import Token
 from business_contexts.entrypoints.schemas.user import ReadUserSchema
 from business_contexts.services.handlers.security import get_current_user
-from messagebus.bootstrap import bootstrap
+from business_contexts.bootstrap import bootstrap
 
 security_router = APIRouter(prefix="/api", tags=["Login"])
 

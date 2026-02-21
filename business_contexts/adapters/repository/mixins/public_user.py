@@ -30,7 +30,7 @@ class PublicUserMixin(ABC):
                 await session.execute(
                     select(PublicUser).where(
                         PublicUser.id == id,
-                        PublicUser.deleted.is_(False),
+                        PublicUser.deleted_at.is_(None),
                     )
                 )
             ).scalar_one_or_none()
@@ -67,7 +67,12 @@ class PublicUserMixin(ABC):
             "email_encrypted": public_user.email_encrypted,
             "email_hash": public_user.email_hash,
             "_password_hash": public_user.password_hash,
-            "deleted": public_user.deleted,
+            "created_at": public_user.created_at,
+            "created_by": public_user.created_by,
+            "updated_at": public_user.updated_at,
+            "updated_by": public_user.updated_by,
+            "deleted_at": public_user.deleted_at,
+            "deleted_by": public_user.deleted_by,
         }
 
         match public_user.operation_type:
@@ -92,6 +97,11 @@ class PublicUserMixin(ABC):
         operation = (
             update(PublicUser)
             .where(PublicUser.id == public_user.id)
-            .values({"deleted": True})
+            .values(
+                {
+                    "deleted_at": public_user.deleted_at,
+                    "deleted_by": public_user.deleted_by,
+                }
+            )
         )
         await self.session.execute(operation)

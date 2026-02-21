@@ -16,7 +16,7 @@ from business_contexts.entrypoints.schemas.user import (
     UpdateUserSchema,
 )
 from business_contexts.services.handlers.security import current_user, get_current_user
-from messagebus.bootstrap import bootstrap
+from business_contexts.bootstrap import bootstrap
 from messagebus.unity_of_work import UnitOfWork
 
 router = APIRouter(prefix="/v1", tags=["Users"], dependencies=[Depends(get_current_user)])
@@ -40,12 +40,12 @@ async def post_user(body: CreateUserSchema) -> UUID:
 
 
 @router.put("/user", status_code=status.HTTP_200_OK)
-async def put_user(body: UpdateUserSchema) -> None:
+async def put_user(email: str, body: UpdateUserSchema) -> None:
     """Atualiza um usuário existente."""
     bus = bootstrap(user=current_user.get())
 
     command = UpdateUser(
-        email=body.email,
+        email=email,
         new_email=body.new_email,
         new_password=body.new_password,
         new_active=body.new_active,

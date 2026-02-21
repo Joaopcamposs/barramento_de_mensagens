@@ -58,7 +58,7 @@ class TestCompanyAggregate:
         assert company.cpf == "12345678901"
         assert company.cnpj == "12345678000190"
         assert company.active is True
-        assert company.deleted is False
+        assert company.deleted_at is None
 
     def test_create_aggregate_generates_unique_ids(self) -> None:
         """Verifica que cada chamada gera um ID diferente."""
@@ -201,7 +201,7 @@ class TestCompanyAggregate:
         company.delete()
 
         assert company._operation_type == OperationType.DELETE
-        assert company.deleted is True
+        assert company.is_deleted is True
 
     def test_delete_emits_company_deleted_event(self) -> None:
         """Verifica que delete() emite o evento CompanyDeleted."""
@@ -347,7 +347,6 @@ class TestCompanyEntity:
             cpf="12345678901",
             cnpj="12345678000190",
             active=True,
-            deleted=False,
         )
 
         assert entity.id == uid
@@ -358,7 +357,7 @@ class TestCompanyEntity:
         assert entity.cpf == "12345678901"
         assert entity.cnpj == "12345678000190"
         assert entity.active is True
-        assert entity.deleted is False
+        assert entity.deleted_at is None
 
     def test_company_entity_optional_fields(self) -> None:
         """Verifica que campos opcionais da entidade podem ser None."""
@@ -370,7 +369,6 @@ class TestCompanyEntity:
             email="contact@acme.com",
             cpf="12345678901",
             active=True,
-            deleted=False,
         )
 
         assert entity.trade_name is None
@@ -386,7 +384,6 @@ class TestCompanyEntity:
             email="contact@acme.com",
             cpf="12345678901",
             active=True,
-            deleted=False,
         )
 
         import pytest
@@ -416,11 +413,10 @@ class TestCompanySchemas:
     def test_update_company_schema(self) -> None:
         """Verifica o schema de atualização de empresa."""
         schema = UpdateCompanySchema(
-            legal_name="Acme Corp",
             new_legal_name="New Acme",
         )
 
-        assert schema.legal_name == "Acme Corp"
+        assert schema.new_legal_name == "New Acme"
         assert schema.new_legal_name == "New Acme"
         assert schema.new_trade_name is None
         assert schema.new_responsible_name is None
@@ -437,7 +433,6 @@ class TestCompanySchemas:
             email="contact@acme.com",
             cpf="12345678901",
             active=True,
-            deleted=False,
         )
 
         assert schema.id == uid
