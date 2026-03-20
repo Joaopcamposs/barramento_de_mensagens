@@ -16,16 +16,18 @@ from business_contexts.entrypoints.schemas.user import (
     UpdateUserSchema,
 )
 from business_contexts.services.handlers.security import current_user, get_current_user
-from business_contexts.bootstrap import bootstrap
-from messagebus.unity_of_work import UnitOfWork
+from business_contexts.bootstrap import bootstrap_apis
+from messagebus.messagebus import MessageBus
 
 router = APIRouter(prefix="/v1", tags=["Users"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/user", response_model=UUID, status_code=status.HTTP_201_CREATED)
-async def post_user(body: CreateUserSchema) -> UUID:
+async def post_user(
+    body: CreateUserSchema,
+    bus: MessageBus = Depends(bootstrap_apis),
+) -> UUID:
     """Cria um novo usuário."""
-    bus = bootstrap(user=current_user.get())
 
     command = CreateUser(
         company=current_user.get().company,
@@ -40,9 +42,12 @@ async def post_user(body: CreateUserSchema) -> UUID:
 
 
 @router.put("/user", status_code=status.HTTP_200_OK)
-async def put_user(email: str, body: UpdateUserSchema) -> None:
+async def put_user(
+    email: str,
+    body: UpdateUserSchema,
+    bus: MessageBus = Depends(bootstrap_apis),
+) -> None:
     """Atualiza um usuário existente."""
-    bus = bootstrap(user=current_user.get())
 
     command = UpdateUser(
         email=email,
@@ -58,17 +63,19 @@ async def put_user(email: str, body: UpdateUserSchema) -> None:
 async def get_user(
     email: str | None = None,
     include_deleted: bool = False,
+    bus: MessageBus = Depends(bootstrap_apis),
 ):
     """Consulta usuários de uma empresa. A empresa é obrigatória."""
-    uow = UnitOfWork(user=current_user.get())
-    users = await view_user(uow, email=email, include_deleted=include_deleted)
+    users = await view_user(bus.uow, email=email, include_deleted=include_deleted)
     return users
 
 
 @router.delete("/user", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(email: str) -> None:
+async def delete_user(
+    email: str,
+    bus: MessageBus = Depends(bootstrap_apis),
+) -> None:
     """Exclui um usuário pelo email."""
-    bus = bootstrap(user=current_user.get())
 
     command = DeleteUser(email=email)
     await bus.handle(command)
