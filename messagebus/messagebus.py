@@ -18,14 +18,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Command:
     """Classe base para todos os comandos do sistema."""
 
     pass
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, frozen=True)
 class Event:
     """Classe base para todos os eventos do sistema."""
 

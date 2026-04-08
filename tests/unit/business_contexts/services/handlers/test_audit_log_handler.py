@@ -38,7 +38,7 @@ class TestAuditLogHandlers:
     ) -> None:
         """Persiste auditoria e cobre wrappers de create/update/delete."""
 
-        @dataclass(kw_only=True)
+        @dataclass(kw_only=True, frozen=True)
         class DemoEvent(audit_log_handlers.Event, audit_log_handlers.AuditableEvent):
             id: Any
 

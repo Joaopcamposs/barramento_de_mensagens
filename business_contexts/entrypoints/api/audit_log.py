@@ -12,7 +12,7 @@ from business_contexts.entrypoints.schemas.audit_log import ReadAuditLogSchema
 from business_contexts.services.handlers.security import get_current_user
 
 router = APIRouter(
-    prefix="/v1",
+    prefix="/api",
     tags=["Audit Log"],
     dependencies=[Depends(get_current_user)],
 )

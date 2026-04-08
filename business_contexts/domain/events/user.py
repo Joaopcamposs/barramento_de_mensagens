@@ -8,7 +8,7 @@ from messagebus.entities import AuditableEvent
 from messagebus.messagebus import Event
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, frozen=True)
 class UserCreated(AuditableEvent, Event):
     """Evento emitido quando um usuário é criado."""
 
@@ -16,7 +16,7 @@ class UserCreated(AuditableEvent, Event):
     company: UUID
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, frozen=True)
 class UserUpdated(AuditableEvent, Event):
     """Evento emitido quando um usuário é atualizado."""
 
@@ -24,7 +24,7 @@ class UserUpdated(AuditableEvent, Event):
     company: UUID
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, frozen=True)
 class UserDeleted(AuditableEvent, Event):
     """Evento emitido quando um usuário é excluído."""
 
@@ -32,7 +32,7 @@ class UserDeleted(AuditableEvent, Event):
     company: UUID
 
 
-@dataclass
+@dataclass(frozen=True)
 class TimeToCreateInitialCompanyUser(Event):
     """Evento emitido para criar o usuário inicial de uma empresa recém-criada."""
 
@@ -45,7 +45,7 @@ class TimeToCreateInitialCompanyUser(Event):
     admin: bool
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, frozen=True)
 class TimeToCreateCompanyAdminUser(Event):
     """Evento emitido para criar o usuário administrador padrão de uma empresa."""
 

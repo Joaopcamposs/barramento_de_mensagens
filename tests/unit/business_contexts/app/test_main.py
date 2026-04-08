@@ -32,8 +32,8 @@ class TestMainModule:
     def test_fastapi_app_is_configured_with_routes(self) -> None:
         """Confere que a aplicação global possui rotas registradas."""
         paths = {route.path for route in app.routes}
-        assert "/" in paths
-        assert "/v1/company" in paths
-        assert "/v1/user" in paths
-        assert "/v1/audit-log" in paths
+        assert "/api/health" in paths
+        assert "/api/company" in paths
+        assert "/api/user" in paths
+        assert "/api/audit-log" in paths
         assert "/api/token" in paths

@@ -43,3 +43,11 @@ class CredentialsException(HTTPException):
 
     status_code: int = 401
     detail: str = "Could not validate credentials"
+
+
+@dataclass
+class InvalidCredentials(HTTPException):
+    """Exceção lançada quando as credenciais do usuário estão incorretas."""
+
+    status_code: int = 400
+    detail: str = "Incorrect username or password"

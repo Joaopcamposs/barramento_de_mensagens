@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
 from business_contexts.domain.commands.security import AuthenticateUser
@@ -28,9 +28,6 @@ async def login_for_access_token(
             password=form_data.password,
         )
     )
-    if not token:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-
     return token
 
 

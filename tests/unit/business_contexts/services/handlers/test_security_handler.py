@@ -9,7 +9,11 @@ import pytest
 import uuid7
 
 from business_contexts.domain.commands.security import AuthenticateUser
-from business_contexts.domain.excecoes import CredentialsException
+from business_contexts.domain.excecoes import (
+    CredentialsException,
+    InvalidCredentials,
+    UserNotFound,
+)
 from business_contexts.entrypoints.schemas.security import Token
 from business_contexts.services.handlers import security as security_handlers
 from tests.unit.helpers import FakeUoW
@@ -26,23 +30,19 @@ class TestSecurityHandlers:
         view_repo_none = SimpleNamespace(
             get_public_user_by_email=AsyncMock(return_value=None)
         )
-        assert (
+        with pytest.raises(UserNotFound):
             await security_handlers.authenticate_user(
                 command, FakeUoW(view_repo=view_repo_none)
-            )
-            is None
-        )  # type: ignore[arg-type]
+            )  # type: ignore[arg-type]
 
         bad_user = SimpleNamespace(verify_password=lambda _: False)
         view_repo_bad = SimpleNamespace(
             get_public_user_by_email=AsyncMock(return_value=bad_user)
         )
-        assert (
+        with pytest.raises(InvalidCredentials):
             await security_handlers.authenticate_user(
                 command, FakeUoW(view_repo=view_repo_bad)
-            )
-            is None
-        )  # type: ignore[arg-type]
+            )  # type: ignore[arg-type]
 
         token = Token(access_token="jwt", token_type="bearer")
         good_user = SimpleNamespace(

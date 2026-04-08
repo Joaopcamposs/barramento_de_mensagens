@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 import uuid7
 
+from business_contexts.domain.excecoes import InvalidCredentials
 from business_contexts.entrypoints.api import security as security_api
 
 
@@ -35,11 +36,11 @@ class TestSecurityApi:
     async def test_login_for_access_token_raises_on_invalid_credentials(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Dispara HTTPException quando autenticação falha."""
-        bus = SimpleNamespace(handle=AsyncMock(return_value=None))
+        """Propaga erro de credenciais quando autenticação falha."""
+        bus = SimpleNamespace(handle=AsyncMock(side_effect=InvalidCredentials))
         monkeypatch.setattr(security_api, "bootstrap", lambda **_: bus)
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidCredentials):
             await security_api.login_for_access_token(
                 SimpleNamespace(username="bad", password="bad")
             )  # type: ignore[arg-type]

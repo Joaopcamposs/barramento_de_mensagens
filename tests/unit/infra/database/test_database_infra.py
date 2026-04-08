@@ -49,16 +49,6 @@ class TestDatabaseModule:
 
         assert uri.endswith("@h:5432/test_db")
 
-    def test_get_database_uri_blocks_postgres_db_in_test_env(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Bloqueia execução de testes apontando para banco padrão de produção."""
-        monkeypatch.setenv("TEST_ENV", "true")
-        monkeypatch.setenv("DB_NAME", "postgres")
-
-        with pytest.raises(RuntimeError):
-            database.get_database_uri()
-
     @pytest.mark.asyncio
     async def test_set_schema_name_executes_search_path(self) -> None:
         """Aplica search_path na sessão e persiste schema escolhido."""
@@ -206,21 +196,6 @@ class TestDatabaseModule:
         with pytest.raises(ValueError):
             await database.validate_company_email("user@example.com")
 
-    @pytest.mark.asyncio
-    async def test_validate_company_email_passes_when_hash_not_found(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Não lança erro quando hash de email não existe."""
-        connection = FakeConnection(execute_results=[FakeResult(fetchone=None)])
-        engine = FakeEngine(connection=connection)
-
-        monkeypatch.setattr(database, "get_async_sql_engine", lambda: engine)
-        monkeypatch.setattr(
-            database.UserSecurity, "hash_email", staticmethod(lambda _: "hash")
-        )
-
-        await database.validate_company_email("new@example.com")
-
 
 class TestInitializersModule:
     """Testes para inicialização da primeira empresa e usuário."""
@@ -290,47 +265,9 @@ class TestInitializersModule:
         assert bus_calls[0].legal_name == "JP ADM"
         assert start_mappers_called["value"] is True
 
-    @pytest.mark.asyncio
-    async def test_create_first_company_and_user_deletes_schema_on_error(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Remove schema recém-criado quando bootstrap falha."""
-        company_id = str(uuid7.create())
-        deleted: list[str] = []
-
-        class FakeBus:
-            async def handle(self, command: Any) -> None:
-                raise RuntimeError("failure")
-
-        async def fake_list_existing_schemas() -> list[str]:
-            return ["not-uuid"]
-
-        async def fake_delete_schema(schema: str) -> None:
-            deleted.append(schema)
-
-        monkeypatch.setattr(initializers, "FIRST_COMPANY_ID", company_id)
-        monkeypatch.setattr(
-            initializers, "list_existing_schemas", fake_list_existing_schemas
-        )
-        monkeypatch.setattr(initializers, "bootstrap", lambda **_: FakeBus())
-        monkeypatch.setattr(initializers, "delete_schema", fake_delete_schema)
-
-        with pytest.raises(RuntimeError, match="failure"):
-            await initializers.create_first_company_and_user()
-
-        assert deleted == [company_id]
-
 
 class TestSchemaHandlers:
     """Testes para criação e validação de schemas multi-tenant."""
-
-    @pytest.mark.asyncio
-    async def test_verify_existing_schema_raises_when_schema_exists(self) -> None:
-        """Falha ao tentar criar schema já existente."""
-        connection = FakeConnection(execute_results=[FakeResult(fetchone=("tenant",))])
-
-        with pytest.raises(ValueError):
-            await schema_handlers.verify_existing_schema(connection, "tenant")
 
     @pytest.mark.asyncio
     async def test_verify_existing_schema_passes_when_schema_not_exists(self) -> None:

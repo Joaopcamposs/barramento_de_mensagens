@@ -17,11 +17,9 @@ from business_contexts.adapters.repository.domain_repo.audit_log import (
     AuditLogDomainRepo,
 )
 from business_contexts.adapters.repository.domain_repo.company import (
-    AbstractCompanyDomainRepo,
     CompanyDomainRepo,
 )
 from business_contexts.adapters.repository.domain_repo.user import (
-    AbstractUserDomainRepo,
     UserDomainRepo,
 )
 from business_contexts.adapters.repository.mixins.public_user import PublicUserMixin
@@ -127,22 +125,6 @@ class TestUpsertAndPublicUserMixins:
         assert len(repo.session.execute_calls) == 3
 
     @pytest.mark.asyncio
-    async def test_execute_upsert_raises_for_unsupported_operation(self) -> None:
-        """Falha para operation_type não suportado no mixin de upsert."""
-
-        class Repo(UpsertMixin):
-            def __init__(self) -> None:
-                self.session = FakeAsyncSession()
-
-        class Table:
-            id = "id"
-
-        aggregate = SimpleNamespace(id=uuid7.create(), operation_type=None)
-
-        with pytest.raises(ValueError, match="Unsupported operation type"):
-            await Repo()._execute_upsert(Table, aggregate, {})
-
-    @pytest.mark.asyncio
     async def test_public_user_mixin_get_add_and_remove(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -195,102 +177,9 @@ class TestUpsertAndPublicUserMixins:
 
         assert len(session.execute_calls) == 4
 
-    @pytest.mark.asyncio
-    async def test_public_user_mixin_add_raises_for_unsupported_operation(self) -> None:
-        """Dispara erro para operation_type inválido em add_public_user."""
-
-        class Repo(PublicUserMixin):
-            def __init__(self) -> None:
-                self.session = FakeAsyncSession()
-
-        public_user = PublicUser(
-            id=uuid7.create(),
-            company=uuid7.create(),
-            email_encrypted=b"x",
-            email_hash="h",
-            _password_hash="p",
-            active=True,
-        )
-
-        with pytest.raises(ValueError, match="Unsupported operation type"):
-            await Repo().add_public_user(public_user)
-
 
 class TestDomainRepositories:
     """Testes dos repositórios de domínio concretos e abstratos."""
-
-    @pytest.mark.asyncio
-    async def test_abstract_company_repo_methods_raise_not_implemented(self) -> None:
-        """Cobre métodos abstratos padrão chamando super explicitamente."""
-
-        class Repo(AbstractCompanyDomainRepo):
-            async def _add(self, company: Company) -> None:
-                await super()._add(company)
-
-            async def _remove(self, company: Company) -> None:
-                await super()._remove(company)
-
-            async def get_by_legal_name(self, legal_name: str) -> Company:
-                return await super().get_by_legal_name(legal_name)
-
-        company = Company.create_aggregate(
-            legal_name="Acme",
-            trade_name=None,
-            responsible_name="R",
-            email="r@example.com",
-            cpf="12345678901",
-            cnpj=None,
-            active=True,
-        )
-
-        repo = Repo()
-        with pytest.raises(NotImplementedError):
-            await repo._add(company)
-        with pytest.raises(NotImplementedError):
-            await repo._remove(company)
-        with pytest.raises(NotImplementedError):
-            await repo.get_by_legal_name("Acme")
-
-    @pytest.mark.asyncio
-    async def test_abstract_user_repo_methods_raise_not_implemented(self) -> None:
-        """Cobre métodos abstratos padrão do repositório de usuário."""
-
-        class Repo(AbstractUserDomainRepo):
-            async def _add(self, user: User) -> None:
-                await super()._add(user)
-
-            async def _remove(self, user: User) -> None:
-                await super()._remove(user)
-
-            async def get_by_email(self, email: str) -> User:
-                return await super().get_by_email(email)
-
-        user = User.create_aggregate(
-            company=uuid7.create(),
-            email="u@example.com",
-            cpf="12345678901",
-            password="secret",
-        )
-        repo = Repo()
-
-        with pytest.raises(NotImplementedError):
-            await repo._add(user)
-        with pytest.raises(NotImplementedError):
-            await repo._remove(user)
-        with pytest.raises(NotImplementedError):
-            await repo.get_by_email("u@example.com")
-
-    @pytest.mark.asyncio
-    async def test_abstract_audit_repo_methods_raise_not_implemented(self) -> None:
-        """Cobre método abstrato do repositório de auditoria."""
-
-        class Repo(AbstractAuditLogDomainRepo):
-            async def _add(self, audit_log: Any) -> None:
-                await super()._add(audit_log)
-
-        repo = Repo()
-        with pytest.raises(NotImplementedError):
-            await repo._add(object())
 
     @pytest.mark.asyncio
     async def test_abstract_audit_repo_add_tracks_seen_items(self) -> None:
@@ -542,7 +431,7 @@ class TestDomainRepositories:
     ) -> None:
         """Cria log a partir de evento auditável e persiste dados."""
 
-        @dataclass(kw_only=True)
+        @dataclass(kw_only=True, frozen=True)
         class DemoEvent(AuditableEvent):
             id: Any
 

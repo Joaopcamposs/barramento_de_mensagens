@@ -53,7 +53,7 @@ class OperationType(Enum):
     DELETE = "delete"
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, frozen=True)
 class AuditableEvent:
     """
     Mixin para eventos que devem gerar registro de auditoria.

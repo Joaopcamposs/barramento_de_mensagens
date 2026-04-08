@@ -19,7 +19,9 @@ from business_contexts.services.handlers.security import current_user, get_curre
 from business_contexts.bootstrap import bootstrap_apis
 from messagebus.messagebus import MessageBus
 
-router = APIRouter(prefix="/v1", tags=["Users"], dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/api", tags=["Users"], dependencies=[Depends(get_current_user)]
+)
 
 
 @router.post("/user", response_model=UUID, status_code=status.HTTP_201_CREATED)

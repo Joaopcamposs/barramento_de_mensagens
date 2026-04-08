@@ -12,7 +12,11 @@ from business_contexts.adapters.repository.view_repo.user import UserViewRepo
 from business_contexts.consts import ALGORITHM, SECRET_KEY, oauth2_scheme
 from business_contexts.domain.commands.security import AuthenticateUser
 from business_contexts.domain.entitites.user import User
-from business_contexts.domain.excecoes import CredentialsException
+from business_contexts.domain.excecoes import (
+    CredentialsException,
+    UserNotFound,
+    InvalidCredentials,
+)
 from business_contexts.entrypoints.schemas.security import Token
 from business_contexts.domains import Domain
 from messagebus.unity_of_work import UnitOfWork
@@ -36,9 +40,9 @@ async def authenticate_user(command: AuthenticateUser, uow: UnitOfWork) -> Token
 
         user = await view_repo.get_public_user_by_email(command.email)
         if not user:
-            return None
+            raise UserNotFound
         if not user.verify_password(command.password):
-            return None
+            raise InvalidCredentials
 
         return user.generate_token(
             company_id=user.company,

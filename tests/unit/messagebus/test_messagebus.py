@@ -32,14 +32,14 @@ class FakeUnitOfWork:
         self._events.append(event)
 
 
-@dataclass
+@dataclass(frozen=True)
 class FakeCommand(Command):
     """Comando fake para testes."""
 
     value: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class FakeEvent(Event):
     """Evento fake para testes."""
 

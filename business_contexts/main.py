@@ -32,7 +32,7 @@ app = FastAPI(
 )
 
 
-@app.get("/")
+@app.get("/api/health")
 async def health_check() -> dict[str, str]:
     """Endpoint de health check da API."""
     return {"message": "API is running!"}

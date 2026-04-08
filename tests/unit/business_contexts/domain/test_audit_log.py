@@ -39,7 +39,7 @@ class TestAuditableEvent:
     def test_combined_event_has_both_attributes(self) -> None:
         from dataclasses import dataclass
 
-        @dataclass(kw_only=True)
+        @dataclass(kw_only=True, frozen=True)
         class TestEvent(AuditableEvent, Event):
             id: UUID
 

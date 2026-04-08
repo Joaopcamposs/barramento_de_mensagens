@@ -6,7 +6,7 @@ from uuid import UUID
 from messagebus.messagebus import Command
 
 
-@dataclass
+@dataclass(frozen=True)
 class CreateCompany(Command):
     """Comando para criar uma nova empresa."""
 
@@ -27,7 +27,7 @@ class CreateCompany(Command):
         return self._first_company_id
 
 
-@dataclass
+@dataclass(frozen=True)
 class UpdateCompany(Command):
     """Comando para atualizar uma empresa existente."""
 
@@ -39,7 +39,7 @@ class UpdateCompany(Command):
     new_active: bool | None = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class DeleteCompany(Command):
     """Comando para excluir uma empresa."""
 

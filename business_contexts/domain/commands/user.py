@@ -6,7 +6,7 @@ from uuid import UUID
 from messagebus.messagebus import Command
 
 
-@dataclass
+@dataclass(frozen=True)
 class CreateUser(Command):
     """Comando para criar um novo usuário."""
 
@@ -18,7 +18,7 @@ class CreateUser(Command):
     admin: bool = False
 
 
-@dataclass
+@dataclass(frozen=True)
 class UpdateUser(Command):
     """Comando para atualizar um usuário existente."""
 
@@ -29,7 +29,7 @@ class UpdateUser(Command):
     new_admin: bool | None = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class DeleteUser(Command):
     """Comando para excluir um usuário."""
 

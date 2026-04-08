@@ -20,7 +20,7 @@ from business_contexts.bootstrap import bootstrap_apis
 from messagebus.messagebus import MessageBus
 
 router = APIRouter(
-    prefix="/v1", tags=["Companies"], dependencies=[Depends(get_current_user)]
+    prefix="/api", tags=["Companies"], dependencies=[Depends(get_current_user)]
 )
 
 
