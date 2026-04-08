@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from business_contexts.security import UserSecurity
+from libs.security import UserSecurity
 from messagebus.entities import AuditBase, UserBase
 
 

@@ -59,3 +59,34 @@ class Email(str):
         if isinstance(value, str):
             return super().__new__(cls, value.lower())  # type: ignore[report-arg-type]
         return None
+
+
+class Phone(str):
+    """Tipo de valor para telefone internacional no formato DDI + DDD + número."""
+
+    def __new__(cls, value: str) -> Phone:  # type: ignore[misc]
+        """Normaliza o telefone para apenas dígitos e valida sua estrutura."""
+        digits = cls.digits_only(value)
+        cls.validate(digits)
+        return super().__new__(cls, digits)  # type: ignore[report-arg-type]
+
+    @staticmethod
+    def digits_only(phone: str) -> str:
+        """Retorna apenas os dígitos numéricos do telefone."""
+        return "".join([char for char in str(phone) if char.isdigit()])
+
+    @staticmethod
+    def validate(phone: str) -> None:
+        """Valida telefone como DDI(2) + DDD(2) + número(8 ou 9)."""
+        if len(phone) not in (12, 13):
+            raise ValueError("Telefone inválido")
+
+        ddi = phone[:2]
+        ddd = phone[2:4]
+        subscriber = phone[4:]
+
+        if ddi == "00" or ddd.startswith("0"):
+            raise ValueError("Telefone inválido")
+
+        if len(subscriber) not in (8, 9):
+            raise ValueError("Telefone inválido")

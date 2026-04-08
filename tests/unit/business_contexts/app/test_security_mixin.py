@@ -5,7 +5,7 @@ from datetime import timedelta
 
 import uuid7
 
-from business_contexts.security import UserSecurity
+from libs.security import UserSecurity
 
 
 class TestUserSecurityToken:

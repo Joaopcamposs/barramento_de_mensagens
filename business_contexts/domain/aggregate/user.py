@@ -11,7 +11,7 @@ from business_contexts.domain.events.user import (
     UserDeleted,
     UserUpdated,
 )
-from business_contexts.security import UserSecurity
+from libs.security import UserSecurity
 from messagebus.entities import Aggregate, OperationType
 
 
