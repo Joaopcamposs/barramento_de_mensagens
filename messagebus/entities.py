@@ -30,6 +30,7 @@ class DomainRepository(ABC):
         self,
         session: AsyncSession | None = None,
     ) -> None:
+        """Anexa uma sessão async existente ao repositório, quando fornecida."""
         if session is not None:
             self.session = session
 
@@ -41,6 +42,7 @@ class ViewRepository(ABC):
         self,
         session: AsyncSession | None = None,
     ) -> None:
+        """Anexa uma sessão async existente ao repositório de leitura, quando fornecida."""
         if session is not None:
             self.session = session
 
@@ -129,6 +131,7 @@ class Aggregate(AuditBase):
 
     @property
     def operation_type(self) -> OperationType | None:
+        """Retorna o último tipo de operação atribuído ao agregado."""
         return self._operation_type
 
     def _set_create_audit(self, user_id: UUID | None) -> None:

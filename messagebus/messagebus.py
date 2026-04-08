@@ -55,6 +55,7 @@ class MessageBus:
         command_handlers: CommandHandlers,
         raise_event_errors: bool = True,
     ) -> None:
+        """Configura o barramento com o UoW e os handlers registrados."""
         self.uow = uow
         self.event_handlers = event_handlers
         self.command_handlers = command_handlers

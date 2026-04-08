@@ -24,6 +24,7 @@ class CreateCompany(Command):
 
     @property
     def first_company_id(self) -> UUID | None:
+        """Retorna o identificador fixo usado para a primeira empresa, se houver."""
         return self._first_company_id
 
 

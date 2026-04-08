@@ -47,6 +47,7 @@ class AbstractUnitOfWork(ABC):
         schema: str | None = None,
         create_schema: bool = False,
     ) -> None:
+        """Configura uma instância base do UoW validando usuário e schema."""
         if (
             (user and user.company)
             and schema
@@ -145,6 +146,7 @@ class UnitOfWork(AbstractUnitOfWork, Generic[WRITE_REPO, READ_REPO]):
         create_schema: bool = False,
         read_only: bool = False,
     ) -> None:
+        """Inicializa o UoW concreto definindo factories e opções de execução."""
         self.read_only = read_only
 
         # dependencias de infra

@@ -9,6 +9,7 @@ class CPF(str):
     """Tipo de valor que representa e valida um CPF brasileiro."""
 
     def __init__(self, cpf: str = ""):
+        """Inicializa o CPF normalizando os dígitos e acionando a validação."""
         self.cpf = self.digits_only(cpf)
         self.validate()
 
@@ -29,6 +30,7 @@ class CPF(str):
         return str(generated_cpf)
 
     def __str__(self) -> str:
+        """Retorna o CPF normalizado apenas com dígitos."""
         return self.cpf
 
 
@@ -36,6 +38,7 @@ class CNPJ(str):
     """Tipo de valor que representa um CNPJ, formatando apenas dígitos."""
 
     def __new__(cls, value: str | None) -> CNPJ | None:  # type: ignore[misc]
+        """Normaliza o CNPJ informado antes de criar o valor."""
         if not value:
             return None
         if isinstance(value, str):
@@ -52,6 +55,7 @@ class Email(str):
     """Tipo de valor que representa um email, convertendo para minúsculas."""
 
     def __new__(cls, value: str) -> Email | None:  # type: ignore[misc]
+        """Converte o email para minúsculas ao construir o tipo valor."""
         if isinstance(value, str):
             return super().__new__(cls, value.lower())  # type: ignore[report-arg-type]
         return None

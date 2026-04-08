@@ -26,6 +26,7 @@ class User(Aggregate, UserSecurity):
     admin: bool
 
     def __hash__(self) -> int:
+        """Retorna um hash estável baseado no identificador do agregado."""
         return hash(self.id)
 
     @staticmethod
@@ -159,6 +160,7 @@ class PublicUser(Aggregate, UserSecurity):
     email_hash: str
 
     def __hash__(self) -> int:
+        """Retorna um hash estável baseado no identificador do agregado."""
         return hash(self.id)
 
     @classmethod

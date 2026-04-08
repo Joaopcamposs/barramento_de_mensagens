@@ -28,6 +28,7 @@ class UserSecurity:
 
     @property
     def password_hash(self) -> str | None:
+        """Retorna o hash de senha armazenado para o usuário."""
         return self._password_hash
 
     def verify_password(self, password: str) -> bool:

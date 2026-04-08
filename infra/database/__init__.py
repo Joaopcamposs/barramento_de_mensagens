@@ -54,6 +54,7 @@ def get_database_uri() -> str:
 
 
 async def set_schema_name(session: AsyncSession, schema: str) -> None:
+    """Ajusta o search_path da sessão para o schema informado."""
     await session.execute(text(f'SET search_path TO "{schema}"'))
     session.schema = str(schema)
 
@@ -74,6 +75,7 @@ def get_async_sql_engine(
     """
 
     def _create_engine() -> AsyncEngine:
+        """Cria uma nova engine ou reutiliza a engine global configurada."""
         global engine
 
         if force_create_engine:
@@ -134,6 +136,7 @@ async def default_async_sql_session_factory(
     await set_schema_name(session, schema_in_use)
 
     async def async_close() -> None:
+        """Fecha a sessão assíncrona criada pela factory."""
         await session.close()
 
     session.async_close = async_close  # type: ignore[attr-defined]
@@ -173,6 +176,7 @@ SCHEMAS_TO_NOT_LIST: tuple[str, ...] = (
 
 
 async def list_existing_schemas() -> list[str]:
+    """Lista os schemas de tenant existentes no banco."""
     async with get_async_sql_engine().begin() as conn:
         result = await conn.execute(
             text("SELECT schema_name FROM information_schema.schemata")
@@ -181,6 +185,7 @@ async def list_existing_schemas() -> list[str]:
 
 
 async def delete_schema(schema_id: str) -> None:
+    """Remove um schema de tenant e seus objetos, se ele existir."""
     async with get_async_sql_engine().begin() as conn:
         await conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema_id}" CASCADE;'))
 

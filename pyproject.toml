@@ -26,6 +26,7 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=6.0.0",
     "pre-commit>=4.0.0",
+    "ty>=0.0.26",
 ]
 
 # ── Pytest ──────────────────────────────────────────────────────────
@@ -79,6 +80,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S", "T20"]
+"tests/**/*.py" = ["ANN"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["business_contexts", "infra", "messagebus", "libs"]
@@ -91,3 +93,19 @@ warn_unused_configs = true
 disallow_untyped_defs = false
 check_untyped_defs = true
 ignore_missing_imports = true
+explicit_package_bases = true
+
+# ── Ty ──────────────────────────────────────────────────────────────
+[tool.ty.environment]
+python-version = "3.11"
+extra-paths = ["."]
+
+[tool.ty.src]
+include = ["business_contexts", "infra", "messagebus", "libs"]
+exclude = ["tests"]
+
+[tool.ty.analysis]
+respect-type-ignore-comments = true
+
+[tool.ty.rules]
+all = "warn"

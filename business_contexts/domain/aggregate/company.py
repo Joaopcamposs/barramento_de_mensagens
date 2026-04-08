@@ -35,10 +35,12 @@ class Company(Aggregate):
     _first_company_id: UUID | None = None
 
     def __hash__(self) -> int:
+        """Retorna um hash estável baseado no identificador do agregado."""
         return hash(self.id)
 
     @property
     def first_company_id(self) -> UUID | None:
+        """Retorna o identificador fixo usado para a primeira empresa, se houver."""
         return self._first_company_id
 
     @staticmethod

@@ -21,6 +21,7 @@ class AuditLog(Aggregate):
     new_data: dict | None = None
 
     def __hash__(self) -> int:
+        """Retorna um hash estável baseado no identificador do agregado."""
         return hash(self.id)
 
     @staticmethod

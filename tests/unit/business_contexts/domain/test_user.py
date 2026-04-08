@@ -120,7 +120,7 @@ class TestUserAggregate:
         assert event.id == user.id
         assert event.company == company_id
 
-    def test_update_sets_update_operation_type(self) -> None:
+    def test_user_update_sets_update_operation_type(self) -> None:
         """Verifica que update() define o tipo de operação como UPDATE."""
         user = User.create_aggregate(
             company=uuid7.create(),
@@ -260,7 +260,7 @@ class TestUserAggregate:
         assert isinstance(user.events[0], UserCreated)
         assert isinstance(user.events[1], UserUpdated)
 
-    def test_hash_is_based_on_id(self) -> None:
+    def test_user_hash_is_based_on_id(self) -> None:
         """Verifica que o hash é baseado no ID."""
         user = User.create_aggregate(
             company=uuid7.create(),
@@ -632,7 +632,7 @@ class TestPublicUserAggregate:
 
         assert public_user._operation_type == OperationType.INSERT
 
-    def test_update_sets_update_operation_type(self) -> None:
+    def test_public_user_update_sets_update_operation_type(self) -> None:
         """Verifica que update() define o tipo de operação como UPDATE."""
         user = self._make_user()
         public_user = PublicUser.create_registration_aggregate(user=user)
@@ -670,7 +670,7 @@ class TestPublicUserAggregate:
 
         assert public_user._operation_type == OperationType.DELETE
 
-    def test_hash_is_based_on_id(self) -> None:
+    def test_public_user_hash_is_based_on_id(self) -> None:
         """Verifica que o hash do PublicUser é baseado no ID."""
         user = self._make_user()
         public_user = PublicUser.create_registration_aggregate(user=user)
