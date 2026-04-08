@@ -4,6 +4,7 @@ version = "0.0.1"
 description = "Barramento de mensagens (comandos e eventos) para integração entre microserviços"
 requires-python = ">=3.11"
 dependencies = [
+    "alembic>=1.16.5",
     "asyncpg>=0.31.0",
     "fastapi[all]>=0.128.7",
     "sentry-sdk>=2.52.0",

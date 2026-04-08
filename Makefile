@@ -18,6 +18,10 @@ typecheck: mypy
 check: lint typecheck
 	@echo "✔ Lint (ruff) e type-check (mypy) passaram."
 
+# ── Aplicação ───────────────────────────────────────────────────────
+run:
+	uv run uvicorn business_contexts.main:app --host 0.0.0.0 --port 8000 --reload
+
 # ── Banco de dados (postgres) ────────────────────────────────────────────────────
 postgres-up:
 	docker compose -f docker-compose.yml --env-file .env -p $(COMPOSE_NAME) up --build -d postgres
@@ -31,6 +35,16 @@ postgres-destroy:
 
 postgres-logs:
 	docker compose -f docker-compose.yml -p $(COMPOSE_NAME) logs postgres -f
+
+# ── Migrações ───────────────────────────────────────────────────────
+upgrade:
+	uv run alembic upgrade head
+
+downgrade:
+	uv run alembic downgrade -1
+
+migration:
+	uv run alembic revision -m "$(m)"
 
 # ── Deploy: App (porta 8000) ──────────────────────────────────
 compose:
@@ -79,8 +93,15 @@ help:
 	@echo "  make postgres-logs     → Logs Postgres"
 	@echo "  make postgres-destroy  → Para Postgres e remove volumes"
 	@echo ""
+	@echo "  Migrações"
+	@echo "  ──────────────────────────────────────────────────"
+	@echo "  make upgrade           → Aplica migrações Alembic até head"
+	@echo "  make downgrade         → Reverte uma revisão Alembic"
+	@echo "  make migration m=nome  → Cria nova revisão Alembic"
+	@echo ""
 	@echo "  Deploy (Docker)"
 	@echo "  ──────────────────────────────────────────────────"
+	@echo "  make run               → Roda API local com reload"
 	@echo "  make compose           → Sobe API + Postgres (:8000)"
 	@echo "  make compose-down      → Para todos os containers"
 	@echo "  make compose-logs      → Logs dos containers"

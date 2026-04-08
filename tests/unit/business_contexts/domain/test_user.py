@@ -589,10 +589,10 @@ class TestPublicUserAggregate:
         assert isinstance(public_user, PublicUser)
         assert public_user.id == user.id
         assert public_user.company == user.company
-        assert public_user.active == user.active
         assert isinstance(public_user.email_encrypted, bytes)
-        assert isinstance(public_user.email_hash, str)
-        assert len(public_user.email_hash) == 64  # SHA-256 hex digest
+        assert isinstance(public_user.email_lookup_hmac, str)
+        assert len(public_user.email_lookup_hmac) == 64
+        assert isinstance(public_user.cpf_lookup_hmac, str)
 
     def test_create_registration_aggregate_encrypts_email(self) -> None:
         """Verifica que o email é criptografado e diferente do original."""
@@ -607,15 +607,15 @@ class TestPublicUserAggregate:
         user = self._make_user()
         public_user = PublicUser.create_registration_aggregate(user=user)
 
-        expected_hash = UserSecurity.hash_email(user.email)
-        assert public_user.email_hash == expected_hash
+        expected_hash = UserSecurity.compute_email_lookup_hmac(user.email)
+        assert public_user.email_lookup_hmac == expected_hash
 
-    def test_public_user_inherits_from_aggregate(self) -> None:
-        """Verifica que PublicUser herda de Aggregate."""
+    def test_public_user_does_not_inherit_from_aggregate(self) -> None:
+        """Verifica que PublicUser é mínimo e não carrega estado de Aggregate."""
         user = self._make_user()
         public_user = PublicUser.create_registration_aggregate(user=user)
 
-        assert isinstance(public_user, Aggregate)
+        assert not isinstance(public_user, Aggregate)
 
     def test_public_user_inherits_from_user_security(self) -> None:
         """Verifica que PublicUser herda de UserSecurity."""
@@ -624,51 +624,26 @@ class TestPublicUserAggregate:
 
         assert isinstance(public_user, UserSecurity)
 
-    def test_register_sets_insert_operation_type(self) -> None:
-        """Verifica que register() define o tipo de operação como INSERT."""
+    def test_update_cpf_changes_cpf_lookup_hmac(self) -> None:
+        """Verifica que update_cpf atualiza apenas o HMAC de lookup do CPF."""
         user = self._make_user()
         public_user = PublicUser.create_registration_aggregate(user=user)
-        public_user.register()
+        original_hash = public_user.cpf_lookup_hmac
 
-        assert public_user._operation_type == OperationType.INSERT
+        public_user.update_cpf("98765432100")
 
-    def test_public_user_update_sets_update_operation_type(self) -> None:
-        """Verifica que update() define o tipo de operação como UPDATE."""
-        user = self._make_user()
-        public_user = PublicUser.create_registration_aggregate(user=user)
-        public_user.update(email="new@example.com", password="newhash", active=False)
+        assert public_user.cpf_lookup_hmac != original_hash
+        assert public_user.cpf_lookup_hmac == UserSecurity.compute_cpf_lookup_hmac(
+            "98765432100"
+        )
 
-        assert public_user._operation_type == OperationType.UPDATE
-
-    def test_update_changes_email_encrypted_and_hash(self) -> None:
-        """Verifica que update() altera o email criptografado e o hash."""
-        user = self._make_user()
-        public_user = PublicUser.create_registration_aggregate(user=user)
-        original_encrypted = public_user.email_encrypted
-        original_hash = public_user.email_hash
-
-        public_user.update(email="new@example.com", password="newhash", active=True)
-
-        assert public_user.email_encrypted != original_encrypted
-        assert public_user.email_hash != original_hash
-        assert public_user.email_hash == UserSecurity.hash_email("new@example.com")
-
-    def test_update_changes_password_and_active(self) -> None:
-        """Verifica que update() altera senha e status de ativação."""
-        user = self._make_user()
-        public_user = PublicUser.create_registration_aggregate(user=user)
-        public_user.update(email="test@example.com", password="newpasshash", active=False)
-
-        assert public_user._password_hash == "newpasshash"
-        assert public_user.active is False
-
-    def test_remove_sets_delete_operation_type(self) -> None:
-        """Verifica que remove() define o tipo de operação como DELETE."""
+    def test_remove_sets_deleted_flag(self) -> None:
+        """Verifica que remove() marca flag interna de remoção."""
         user = self._make_user()
         public_user = PublicUser.create_registration_aggregate(user=user)
         public_user.remove()
 
-        assert public_user._operation_type == OperationType.DELETE
+        assert public_user._deleted is True
 
     def test_public_user_hash_is_based_on_id(self) -> None:
         """Verifica que o hash do PublicUser é baseado no ID."""
@@ -688,25 +663,25 @@ class TestPublicUserEntity:
         entity = PublicUserEntity(
             id=uid,
             company=company_id,
-            active=True,
             email_encrypted=b"encrypted_data",
-            email_hash="a" * 64,
+            email_lookup_hmac="a" * 64,
+            cpf_lookup_hmac="b" * 64,
         )
 
         assert entity.id == uid
         assert entity.company == company_id
-        assert entity.active is True
         assert entity.email_encrypted == b"encrypted_data"
-        assert entity.email_hash == "a" * 64
+        assert entity.email_lookup_hmac == "a" * 64
+        assert entity.cpf_lookup_hmac == "b" * 64
 
     def test_public_user_entity_inherits_user_security(self) -> None:
         """Verifica que a entidade PublicUser herda de UserSecurity."""
         entity = PublicUserEntity(
             id=uuid7.create(),
             company=uuid7.create(),
-            active=True,
             email_encrypted=b"encrypted_data",
-            email_hash="a" * 64,
+            email_lookup_hmac="a" * 64,
+            cpf_lookup_hmac=None,
         )
 
         assert isinstance(entity, UserSecurity)

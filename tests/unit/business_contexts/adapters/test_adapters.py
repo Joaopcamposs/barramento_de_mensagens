@@ -142,10 +142,9 @@ class TestUpsertAndPublicUserMixins:
         row = SimpleNamespace(
             id=uuid7.create(),
             company=uuid7.create(),
-            active=True,
             email_encrypted=b"encrypted",
-            email_hash="hash",
-            password_hash="pwdhash",
+            email_lookup_hmac="hash",
+            cpf_lookup_hmac="cpf-hash",
         )
         session = FakeAsyncSession(execute_results=[FakeResult(scalar=row)])
         repo = Repo(session)
@@ -162,15 +161,13 @@ class TestUpsertAndPublicUserMixins:
             id=row.id,
             company=row.company,
             email_encrypted=b"x",
-            email_hash="h",
-            _password_hash="p",
-            active=True,
+            email_lookup_hmac="h",
+            cpf_lookup_hmac="cpf-hash",
         )
-        public_user.register()
         await repo.add_public_user(public_user)
 
-        public_user.update(email="new@example.com", password="new-hash", active=False)
-        await repo.add_public_user(public_user)
+        public_user.update_cpf(cpf="12345678901")
+        await repo.update_public_user_cpf(public_user)
 
         public_user.remove()
         await repo.remove_public_user(public_user)
@@ -565,7 +562,8 @@ class TestViewRepositoriesAndAdaptersViews:
             deleted_at=None,
             deleted_by=None,
             email_encrypted=b"x",
-            email_hash="h",
+            email_lookup_hmac="h",
+            cpf_lookup_hmac="cpf-hash",
         )
 
         repo = UserViewRepo(
@@ -602,7 +600,9 @@ class TestViewRepositoriesAndAdaptersViews:
             session=FakeAsyncSession(execute_results=[FakeResult(scalar=row)])
         )
         monkeypatch.setattr(
-            PublicUser, "hash_email", staticmethod(lambda email: f"h:{email}")
+            PublicUser,
+            "compute_email_lookup_hmac",
+            staticmethod(lambda email: f"h:{email}"),
         )
         assert (
             await repo_public.get_public_user_by_email("user@example.com")

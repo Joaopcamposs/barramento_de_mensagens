@@ -2,7 +2,9 @@ services:
   api:
     build:
       context: .
-    container_name: fastapi_app
+    container_name: barramento_api
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     depends_on:
@@ -10,11 +12,12 @@ services:
         condition: service_healthy
     environment:
       - IN_DOCKER=true
-      - DB_HOST=postgres
+      - PORT=8000
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/postgres
 
   postgres:
     image: postgres:16
-    container_name: postgres_db
+    container_name: barramento_postgres
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres

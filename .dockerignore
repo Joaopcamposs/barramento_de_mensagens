@@ -1,1 +1,11 @@
 .idea
+.git
+.venv
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+htmlcov
+__pycache__
+*.pyc
+.DS_Store

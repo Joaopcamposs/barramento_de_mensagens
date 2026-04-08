@@ -5,17 +5,17 @@ from uuid import UUID
 import uuid7
 
 from business_contexts.adapters.orm import start_mappers
-from business_contexts.consts import (
+from business_contexts.bootstrap import bootstrap
+from business_contexts.domain.commands.company import CreateCompany
+from infra.database import delete_schema, list_existing_schemas
+from libs.consts import (
     FIRST_COMPANY_ID,
     FIRST_USER_CPF,
     FIRST_USER_EMAIL,
     FIRST_USER_PASSWORD,
 )
-from business_contexts.domain.commands.company import CreateCompany
-from infra.database import delete_schema, list_existing_schemas
-from business_contexts.bootstrap import bootstrap
+from libs.logger import logger
 from messagebus.entities import UserBase
-from messagebus.messagebus import logger
 
 
 def generate_fake_user_for_first_registration(company_id: UUID) -> UserBase:
@@ -38,6 +38,10 @@ async def create_first_company_and_user() -> None:
             return
         except ValueError:
             pass
+
+    if not all([FIRST_COMPANY_ID, FIRST_USER_CPF, FIRST_USER_EMAIL, FIRST_USER_PASSWORD]):
+        logger.warning("Bootstrap inicial ignorado: variáveis FIRST_USER_* incompletas.")
+        return
 
     company_id = UUID(FIRST_COMPANY_ID)
     fake_user = generate_fake_user_for_first_registration(company_id)

@@ -84,9 +84,9 @@ class FakeAsyncSession:
     async def __aexit__(self, *args: Any) -> None:
         return None
 
-    async def execute(self, query: Any) -> Any:
+    async def execute(self, query: Any, *args: Any, **kwargs: Any) -> Any:
         """Registra a query e retorna o próximo resultado configurado."""
-        self.execute_calls.append(query)
+        self.execute_calls.append((query, args, kwargs))
         if self.execute_results:
             result = self.execute_results.pop(0)
             return result(query) if callable(result) else result
@@ -169,15 +169,15 @@ class FakeConnection:
         self.execute_calls: list[Any] = []
         self.run_sync_calls: list[Any] = []
 
-    async def execute(self, query: Any) -> Any:
-        self.execute_calls.append(query)
+    async def execute(self, query: Any, *args: Any, **kwargs: Any) -> Any:
+        self.execute_calls.append((query, args, kwargs))
         if self.execute_results:
             result = self.execute_results.pop(0)
             return result(query) if callable(result) else result
         return FakeResult()
 
-    async def run_sync(self, callback: Any) -> None:
-        self.run_sync_calls.append(callback)
+    async def run_sync(self, callback: Any, *args: Any, **kwargs: Any) -> None:
+        self.run_sync_calls.append((callback, args, kwargs))
 
 
 class FakeEngine:

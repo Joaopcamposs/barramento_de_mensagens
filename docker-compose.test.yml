@@ -1,7 +1,7 @@
 services:
   postgres_test:
     image: postgres:16
-    container_name: postgres_test_db
+    container_name: barramento_postgres_test
     environment:
       POSTGRES_DB: test_db
       POSTGRES_USER: postgres

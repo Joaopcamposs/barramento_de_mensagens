@@ -20,10 +20,10 @@ class User(AuditBase, UserBase, UserSecurity):
 
 @dataclass(kw_only=True)
 class PublicUser(UserSecurity):
-    """Entidade de leitura que representa um usuário público (dados criptografados)."""
+    """Entidade de leitura que representa um usuário público para roteamento de tenant."""
 
     id: UUID
     company: UUID
-    active: bool
     email_encrypted: bytes
-    email_hash: str
+    email_lookup_hmac: str
+    cpf_lookup_hmac: str | None
