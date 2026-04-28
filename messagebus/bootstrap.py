@@ -76,6 +76,7 @@ def inject_dependencies(handler: Callable, dependencies: dict[str, Any]) -> Call
 
     @functools.wraps(handler)
     async def async_wrapper(message: Command | Event) -> Any:
+        """Executa o handler original injetando as dependências resolvidas."""
         try:
             return await handler(message, **deps)
         finally:

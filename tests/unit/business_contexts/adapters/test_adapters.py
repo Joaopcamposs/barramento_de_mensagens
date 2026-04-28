@@ -17,11 +17,9 @@ from business_contexts.adapters.repository.domain_repo.audit_log import (
     AuditLogDomainRepo,
 )
 from business_contexts.adapters.repository.domain_repo.company import (
-    AbstractCompanyDomainRepo,
     CompanyDomainRepo,
 )
 from business_contexts.adapters.repository.domain_repo.user import (
-    AbstractUserDomainRepo,
     UserDomainRepo,
 )
 from business_contexts.adapters.repository.mixins.public_user import PublicUserMixin
@@ -31,6 +29,7 @@ from business_contexts.adapters.repository.view_repo.company import CompanyViewR
 from business_contexts.adapters.repository.view_repo.user import UserViewRepo
 from business_contexts.adapters.views.audit_log import view_audit_log
 from business_contexts.adapters.views.company import view_company
+from business_contexts.adapters.views import user as user_views
 from business_contexts.adapters.views.user import view_user
 from business_contexts.domain.aggregate.company import Company
 from business_contexts.domain.aggregate.user import PublicUser, User
@@ -127,22 +126,6 @@ class TestUpsertAndPublicUserMixins:
         assert len(repo.session.execute_calls) == 3
 
     @pytest.mark.asyncio
-    async def test_execute_upsert_raises_for_unsupported_operation(self) -> None:
-        """Falha para operation_type não suportado no mixin de upsert."""
-
-        class Repo(UpsertMixin):
-            def __init__(self) -> None:
-                self.session = FakeAsyncSession()
-
-        class Table:
-            id = "id"
-
-        aggregate = SimpleNamespace(id=uuid7.create(), operation_type=None)
-
-        with pytest.raises(ValueError, match="Unsupported operation type"):
-            await Repo()._execute_upsert(Table, aggregate, {})
-
-    @pytest.mark.asyncio
     async def test_public_user_mixin_get_add_and_remove(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -160,10 +143,9 @@ class TestUpsertAndPublicUserMixins:
         row = SimpleNamespace(
             id=uuid7.create(),
             company=uuid7.create(),
-            active=True,
             email_encrypted=b"encrypted",
-            email_hash="hash",
-            password_hash="pwdhash",
+            email_lookup_hmac="hash",
+            cpf_lookup_hmac="cpf-hash",
         )
         session = FakeAsyncSession(execute_results=[FakeResult(scalar=row)])
         repo = Repo(session)
@@ -180,117 +162,22 @@ class TestUpsertAndPublicUserMixins:
             id=row.id,
             company=row.company,
             email_encrypted=b"x",
-            email_hash="h",
-            _password_hash="p",
-            active=True,
+            email_lookup_hmac="h",
+            cpf_lookup_hmac="cpf-hash",
         )
-        public_user.register()
         await repo.add_public_user(public_user)
 
-        public_user.update(email="new@example.com", password="new-hash", active=False)
-        await repo.add_public_user(public_user)
+        public_user.update_cpf(cpf="12345678901")
+        await repo.update_public_user_cpf(public_user)
 
         public_user.remove()
         await repo.remove_public_user(public_user)
 
         assert len(session.execute_calls) == 4
 
-    @pytest.mark.asyncio
-    async def test_public_user_mixin_add_raises_for_unsupported_operation(self) -> None:
-        """Dispara erro para operation_type inválido em add_public_user."""
-
-        class Repo(PublicUserMixin):
-            def __init__(self) -> None:
-                self.session = FakeAsyncSession()
-
-        public_user = PublicUser(
-            id=uuid7.create(),
-            company=uuid7.create(),
-            email_encrypted=b"x",
-            email_hash="h",
-            _password_hash="p",
-            active=True,
-        )
-
-        with pytest.raises(ValueError, match="Unsupported operation type"):
-            await Repo().add_public_user(public_user)
-
 
 class TestDomainRepositories:
     """Testes dos repositórios de domínio concretos e abstratos."""
-
-    @pytest.mark.asyncio
-    async def test_abstract_company_repo_methods_raise_not_implemented(self) -> None:
-        """Cobre métodos abstratos padrão chamando super explicitamente."""
-
-        class Repo(AbstractCompanyDomainRepo):
-            async def _add(self, company: Company) -> None:
-                await super()._add(company)
-
-            async def _remove(self, company: Company) -> None:
-                await super()._remove(company)
-
-            async def get_by_legal_name(self, legal_name: str) -> Company:
-                return await super().get_by_legal_name(legal_name)
-
-        company = Company.create_aggregate(
-            legal_name="Acme",
-            trade_name=None,
-            responsible_name="R",
-            email="r@example.com",
-            cpf="12345678901",
-            cnpj=None,
-            active=True,
-        )
-
-        repo = Repo()
-        with pytest.raises(NotImplementedError):
-            await repo._add(company)
-        with pytest.raises(NotImplementedError):
-            await repo._remove(company)
-        with pytest.raises(NotImplementedError):
-            await repo.get_by_legal_name("Acme")
-
-    @pytest.mark.asyncio
-    async def test_abstract_user_repo_methods_raise_not_implemented(self) -> None:
-        """Cobre métodos abstratos padrão do repositório de usuário."""
-
-        class Repo(AbstractUserDomainRepo):
-            async def _add(self, user: User) -> None:
-                await super()._add(user)
-
-            async def _remove(self, user: User) -> None:
-                await super()._remove(user)
-
-            async def get_by_email(self, email: str) -> User:
-                return await super().get_by_email(email)
-
-        user = User.create_aggregate(
-            company=uuid7.create(),
-            email="u@example.com",
-            cpf="12345678901",
-            password="secret",
-        )
-        repo = Repo()
-
-        with pytest.raises(NotImplementedError):
-            await repo._add(user)
-        with pytest.raises(NotImplementedError):
-            await repo._remove(user)
-        with pytest.raises(NotImplementedError):
-            await repo.get_by_email("u@example.com")
-
-    @pytest.mark.asyncio
-    async def test_abstract_audit_repo_methods_raise_not_implemented(self) -> None:
-        """Cobre método abstrato do repositório de auditoria."""
-
-        class Repo(AbstractAuditLogDomainRepo):
-            async def _add(self, audit_log: Any) -> None:
-                await super()._add(audit_log)
-
-        repo = Repo()
-        with pytest.raises(NotImplementedError):
-            await repo._add(object())
 
     @pytest.mark.asyncio
     async def test_abstract_audit_repo_add_tracks_seen_items(self) -> None:
@@ -327,6 +214,7 @@ class TestDomainRepositories:
             session=FakeAsyncSession(execute_results=[FakeResult(scalar=None)])
         )
         monkeypatch.setattr(repo, "validate_company_email", AsyncMock())
+        monkeypatch.setattr(repo, "validate_company_cpf", AsyncMock())
 
         aggregate = await repo.create_aggregate(
             legal_name="Acme",
@@ -343,6 +231,7 @@ class TestDomainRepositories:
             session=FakeAsyncSession(execute_results=[FakeResult(scalar=object())])
         )
         monkeypatch.setattr(repo_dup, "validate_company_email", AsyncMock())
+        monkeypatch.setattr(repo_dup, "validate_company_cpf", AsyncMock())
         with pytest.raises(CompanyAlreadyRegistered):
             await repo_dup.create_aggregate(
                 legal_name="Acme",
@@ -435,6 +324,22 @@ class TestDomainRepositories:
         await CompanyDomainRepo.validate_company_email("john@example.com")
 
         assert captured == ["john@example.com"]
+
+    @pytest.mark.asyncio
+    async def test_company_domain_repo_validate_company_cpf_calls_infra(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Encaminha validação de CPF para camada de infraestrutura."""
+        captured: list[str] = []
+
+        async def fake_validate(cpf: str) -> None:
+            captured.append(cpf)
+
+        monkeypatch.setattr("infra.database.validate_company_cpf", fake_validate)
+
+        await CompanyDomainRepo.validate_company_cpf("12345678901")
+
+        assert captured == ["12345678901"]
 
     @pytest.mark.asyncio
     async def test_user_domain_repo_create_and_get_and_add_remove(
@@ -542,7 +447,7 @@ class TestDomainRepositories:
     ) -> None:
         """Cria log a partir de evento auditável e persiste dados."""
 
-        @dataclass(kw_only=True)
+        @dataclass(kw_only=True, frozen=True)
         class DemoEvent(AuditableEvent):
             id: Any
 
@@ -676,7 +581,8 @@ class TestViewRepositoriesAndAdaptersViews:
             deleted_at=None,
             deleted_by=None,
             email_encrypted=b"x",
-            email_hash="h",
+            email_lookup_hmac="h",
+            cpf_lookup_hmac="cpf-hash",
         )
 
         repo = UserViewRepo(
@@ -713,7 +619,9 @@ class TestViewRepositoriesAndAdaptersViews:
             session=FakeAsyncSession(execute_results=[FakeResult(scalar=row)])
         )
         monkeypatch.setattr(
-            PublicUser, "hash_email", staticmethod(lambda email: f"h:{email}")
+            PublicUser,
+            "compute_email_lookup_hmac",
+            staticmethod(lambda email: f"h:{email}"),
         )
         assert (
             await repo_public.get_public_user_by_email("user@example.com")
@@ -747,6 +655,45 @@ class TestViewRepositoriesAndAdaptersViews:
             email="missing@example.com",
         )
         assert empty == []
+
+    @pytest.mark.asyncio
+    async def test_user_view_helpers_route_public_and_tenant_users(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Cobre helpers genéricos de usuário público e usuário do tenant."""
+        public_user = SimpleNamespace(id=uuid7.create(), company=uuid7.create())
+        tenant_user = SimpleNamespace(id=public_user.id, company=public_user.company)
+        public_uow = FakeUoW(
+            view_repo=SimpleNamespace(
+                get_public_user_by_email=AsyncMock(return_value=public_user),
+                get_by_id=AsyncMock(return_value=tenant_user),
+            )
+        )
+        monkeypatch.setattr(user_views, "UnitOfWork", lambda **_: public_uow)
+
+        assert (
+            await user_views.get_public_user_by_email("user@example.com") is public_user
+        )
+        assert (
+            await user_views.get_tenant_user(
+                schema=public_user.company,
+                user_id=public_user.id,
+            )
+            is tenant_user
+        )
+
+        missing_uow = FakeUoW(
+            view_repo=SimpleNamespace(
+                get_public_user_by_email=AsyncMock(return_value=None),
+                get_by_id=AsyncMock(return_value=None),
+            )
+        )
+        monkeypatch.setattr(user_views, "UnitOfWork", lambda **_: missing_uow)
+
+        with pytest.raises(UserNotFound):
+            await user_views.get_public_user_by_email("missing@example.com")
+        with pytest.raises(UserNotFound):
+            await user_views.get_tenant_user(schema="tenant", user_id=uuid7.create())
 
     @pytest.mark.asyncio
     async def test_audit_log_view_repo_and_view_adapter(

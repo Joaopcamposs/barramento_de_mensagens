@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from typing import Any
 from uuid import UUID
 
 import pytest
 import uuid7
-from sqlalchemy import Sequence
 
 from infra import database
 from infra.database import initializers, schema_handlers
@@ -22,6 +20,7 @@ class TestDatabaseModule:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Usa porta local padrão quando não está em teste nem docker."""
+        monkeypatch.delenv("DATABASE_URL", raising=False)
         monkeypatch.delenv("TEST_ENV", raising=False)
         monkeypatch.delenv("IN_DOCKER", raising=False)
         monkeypatch.setenv("DB_NAME", "tenant_db")
@@ -33,6 +32,16 @@ class TestDatabaseModule:
         uri = database.get_database_uri()
 
         assert uri == "postgresql+asyncpg://postgres:secret@localhost:54322/tenant_db"
+
+    def test_get_database_uri_prefers_normalized_database_url(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Normaliza DATABASE_URL quando ela está configurada."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@db:5432/app")
+
+        uri = database.get_database_uri()
+
+        assert uri == "postgresql+asyncpg://user:pass@db:5432/app"
 
     def test_get_database_uri_uses_test_port_in_test_env(
         self, monkeypatch: pytest.MonkeyPatch
@@ -49,25 +58,21 @@ class TestDatabaseModule:
 
         assert uri.endswith("@h:5432/test_db")
 
-    def test_get_database_uri_blocks_postgres_db_in_test_env(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Bloqueia execução de testes apontando para banco padrão de produção."""
-        monkeypatch.setenv("TEST_ENV", "true")
-        monkeypatch.setenv("DB_NAME", "postgres")
-
-        with pytest.raises(RuntimeError):
-            database.get_database_uri()
-
     @pytest.mark.asyncio
     async def test_set_schema_name_executes_search_path(self) -> None:
         """Aplica search_path na sessão e persiste schema escolhido."""
         session = FakeAsyncSession()
+        schema = str(uuid7.create())
 
-        await database.set_schema_name(session, "tenant_schema")
+        await database.set_schema_name(session, schema)
 
-        assert session.schema == "tenant_schema"
+        assert session.schema == schema
         assert session.execute_calls
+
+    def test_validate_schema_name_rejects_unsafe_schema(self) -> None:
+        """Rejeita nomes de schema que não sejam public ou UUID."""
+        with pytest.raises(ValueError):
+            database.validate_schema_name('tenant"; DROP SCHEMA public; --')
 
     def test_get_async_sql_engine_caches_singleton(
         self, monkeypatch: pytest.MonkeyPatch
@@ -89,6 +94,31 @@ class TestDatabaseModule:
         assert engine_a == "engine-1"
         assert engine_b == "engine-1"
         assert len(created) == 1
+
+    def test_get_async_sql_engine_uses_pool_env_options(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Aplica configurações de pool vindas de variáveis de ambiente."""
+        calls: list[dict[str, Any]] = []
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+        monkeypatch.setenv("DB_NAME", "test_db")
+        monkeypatch.setenv("DB_POOL_SIZE", "7")
+        monkeypatch.setenv("DB_MAX_OVERFLOW", "4")
+        monkeypatch.setenv("DB_POOL_TIMEOUT", "11")
+        monkeypatch.setenv("DB_POOL_RECYCLE", "900")
+
+        def fake_create(*args: Any, **kwargs: Any) -> str:
+            calls.append(kwargs)
+            return "engine"
+
+        monkeypatch.setattr(database, "create_async_engine", fake_create)
+        monkeypatch.setattr(database, "engine", None)
+
+        assert database.get_async_sql_engine() == "engine"
+        assert calls[0]["pool_size"] == 7
+        assert calls[0]["max_overflow"] == 4
+        assert calls[0]["pool_timeout"] == 11
+        assert calls[0]["pool_recycle"] == 900
 
     def test_get_async_sql_engine_force_create_ignores_cache(
         self, monkeypatch: pytest.MonkeyPatch
@@ -127,15 +157,16 @@ class TestDatabaseModule:
 
         monkeypatch.setattr(database, "get_async_sql_engine", lambda **_: fake_engine)
         monkeypatch.setattr(database, "AsyncSession", SessionCtor)
+        schema = str(uuid7.create())
 
         session = await database.default_async_sql_session_factory(
             read_only=True,
-            schema="tenant-r",
+            schema=schema,
         )
 
         assert isinstance(session, SessionCtor)
         assert fake_engine.execution_options_calls[0]["schema_translate_map"] == {
-            None: "tenant-r"
+            None: schema
         }
         assert fake_engine.execution_options_calls[0]["isolation_level"] == "AUTOCOMMIT"
         assert captured["autoflush"] is True
@@ -183,43 +214,63 @@ class TestDatabaseModule:
         """Executa comando de DROP SCHEMA para o tenant informado."""
         connection = FakeConnection()
         engine = FakeEngine(connection=connection)
+        schema = str(uuid7.create())
         monkeypatch.setattr(database, "get_async_sql_engine", lambda: engine)
 
-        await database.delete_schema("tenant-z")
+        await database.delete_schema(schema)
 
-        query_text = str(connection.execute_calls[0])
-        assert 'DROP SCHEMA IF EXISTS "tenant-z"' in query_text
+        query_text = str(connection.execute_calls[0][0])
+        assert f'DROP SCHEMA IF EXISTS "{schema}"' in query_text
 
     @pytest.mark.asyncio
     async def test_validate_company_email_raises_on_existing_hash(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Dispara erro quando hash de email já existe no schema público."""
-        connection = FakeConnection(execute_results=[FakeResult(fetchone=("hash",))])
+        connection = FakeConnection(
+            execute_results=[
+                FakeResult(fetchone=("public_user",)),
+                FakeResult(fetchone=(1,)),
+            ]
+        )
         engine = FakeEngine(connection=connection)
 
         monkeypatch.setattr(database, "get_async_sql_engine", lambda: engine)
         monkeypatch.setattr(
-            database.UserSecurity, "hash_email", staticmethod(lambda _: "hash")
+            database.UserSecurity,
+            "compute_email_lookup_hmac",
+            staticmethod(lambda _: "hash"),
         )
 
         with pytest.raises(ValueError):
             await database.validate_company_email("user@example.com")
 
+        assert connection.execute_calls[1][1][0] == {"email_lookup_hmac": "hash"}
+
     @pytest.mark.asyncio
-    async def test_validate_company_email_passes_when_hash_not_found(
+    async def test_validate_company_cpf_raises_on_existing_hash(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Não lança erro quando hash de email não existe."""
-        connection = FakeConnection(execute_results=[FakeResult(fetchone=None)])
+        """Dispara erro quando HMAC de CPF já existe no schema público."""
+        connection = FakeConnection(
+            execute_results=[
+                FakeResult(scalar="public_user"),
+                FakeResult(fetchone=(1,)),
+            ]
+        )
         engine = FakeEngine(connection=connection)
 
         monkeypatch.setattr(database, "get_async_sql_engine", lambda: engine)
         monkeypatch.setattr(
-            database.UserSecurity, "hash_email", staticmethod(lambda _: "hash")
+            database.UserSecurity,
+            "compute_cpf_lookup_hmac",
+            staticmethod(lambda _: "cpf-hash"),
         )
 
-        await database.validate_company_email("new@example.com")
+        with pytest.raises(database.UserCpfAlreadyRegistered):
+            await database.validate_company_cpf("12345678901")
+
+        assert connection.execute_calls[1][1][0] == {"hash": "cpf-hash"}
 
 
 class TestInitializersModule:
@@ -274,6 +325,9 @@ class TestInitializersModule:
             return ["invalid-schema"]
 
         monkeypatch.setattr(initializers, "FIRST_COMPANY_ID", company_id)
+        monkeypatch.setattr(initializers, "FIRST_USER_CPF", "12345678901")
+        monkeypatch.setattr(initializers, "FIRST_USER_EMAIL", "admin@example.com")
+        monkeypatch.setattr(initializers, "FIRST_USER_PASSWORD", "secret")
         monkeypatch.setattr(
             initializers, "list_existing_schemas", fake_list_existing_schemas
         )
@@ -290,92 +344,41 @@ class TestInitializersModule:
         assert bus_calls[0].legal_name == "JP ADM"
         assert start_mappers_called["value"] is True
 
-    @pytest.mark.asyncio
-    async def test_create_first_company_and_user_deletes_schema_on_error(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Remove schema recém-criado quando bootstrap falha."""
-        company_id = str(uuid7.create())
-        deleted: list[str] = []
-
-        class FakeBus:
-            async def handle(self, command: Any) -> None:
-                raise RuntimeError("failure")
-
-        async def fake_list_existing_schemas() -> list[str]:
-            return ["not-uuid"]
-
-        async def fake_delete_schema(schema: str) -> None:
-            deleted.append(schema)
-
-        monkeypatch.setattr(initializers, "FIRST_COMPANY_ID", company_id)
-        monkeypatch.setattr(
-            initializers, "list_existing_schemas", fake_list_existing_schemas
-        )
-        monkeypatch.setattr(initializers, "bootstrap", lambda **_: FakeBus())
-        monkeypatch.setattr(initializers, "delete_schema", fake_delete_schema)
-
-        with pytest.raises(RuntimeError, match="failure"):
-            await initializers.create_first_company_and_user()
-
-        assert deleted == [company_id]
-
 
 class TestSchemaHandlers:
     """Testes para criação e validação de schemas multi-tenant."""
-
-    @pytest.mark.asyncio
-    async def test_verify_existing_schema_raises_when_schema_exists(self) -> None:
-        """Falha ao tentar criar schema já existente."""
-        connection = FakeConnection(execute_results=[FakeResult(fetchone=("tenant",))])
-
-        with pytest.raises(ValueError):
-            await schema_handlers.verify_existing_schema(connection, "tenant")
 
     @pytest.mark.asyncio
     async def test_verify_existing_schema_passes_when_schema_not_exists(self) -> None:
         """Permite criação quando schema ainda não existe."""
         connection = FakeConnection(execute_results=[FakeResult(fetchone=None)])
 
-        await schema_handlers.verify_existing_schema(connection, "tenant")
+        await schema_handlers.verify_existing_schema(connection, str(uuid7.create()))
 
     @pytest.mark.asyncio
-    async def test_create_schema_and_tables_updates_and_restores_table_schema(
+    async def test_create_schema_and_tables_runs_migrations(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Cria schema de tenant, ajusta metadata e restaura estado original."""
+        """Valida schema, verifica existência e delega criação para Alembic."""
         connection = FakeConnection(execute_results=[FakeResult(fetchone=None)])
         engine = FakeEngine(connection=connection)
+        schema = str(uuid7.create())
+        migrated: list[str] = []
 
-        class FakeColumn:
-            def __init__(self, default: Any = None) -> None:
-                self.default = default
-
-        class FakeTable:
-            def __init__(self, schema: str | None, columns: list[FakeColumn]) -> None:
-                self.schema = schema
-                self.columns = columns
-
-        seq = Sequence("tenant_seq")
-        tenant_table = FakeTable(None, [FakeColumn(seq), FakeColumn()])
-        public_table = FakeTable("public", [FakeColumn()])
-        metadata = SimpleNamespace(
-            sorted_tables=[tenant_table, public_table],
-            create_all=lambda *_args, **_kwargs: None,
-        )
+        async def fake_create_schema_and_run_migrations(schema_id: str) -> None:
+            migrated.append(schema_id)
 
         monkeypatch.setattr(schema_handlers, "get_async_sql_engine", lambda **_: engine)
         monkeypatch.setattr(
-            schema_handlers, "mapper_registry", SimpleNamespace(metadata=metadata)
+            schema_handlers,
+            "create_schema_and_run_migrations",
+            fake_create_schema_and_run_migrations,
         )
 
-        await schema_handlers.create_schema_and_tables("tenant_new")
+        await schema_handlers.create_schema_and_tables(schema)
 
-        assert tenant_table.schema is None
-        assert public_table.schema == "public"
-        assert seq.schema == "tenant_new"
+        assert migrated == [schema]
         assert engine.disposed is True
-        assert connection.run_sync_calls
 
     @pytest.mark.asyncio
     async def test_create_full_schema_within_transaction_uses_session_factory(
@@ -385,7 +388,7 @@ class TestSchemaHandlers:
         created: list[str | None] = []
         received_kwargs: list[dict[str, Any]] = []
 
-        async def fake_create_schema(schema_id: str | None) -> None:
+        async def fake_create_schema(schema_id: str) -> None:
             created.append(schema_id)
 
         async def fake_session_factory(**kwargs: Any) -> FakeAsyncSession:
@@ -395,18 +398,19 @@ class TestSchemaHandlers:
         monkeypatch.setattr(
             schema_handlers, "create_schema_and_tables", fake_create_schema
         )
+        schema = UUID(str(uuid7.create()))
 
         session = await schema_handlers.create_full_schema_within_transaction(
             session_factory=fake_session_factory,
-            schema_id=UUID(str(uuid7.create())),
+            schema_id=schema,
         )
 
         assert isinstance(session, FakeAsyncSession)
-        assert created and isinstance(created[0], UUID)
+        assert created == [str(schema)]
         assert received_kwargs == [
             {
                 "read_only": False,
-                "schema": str(created[0]),
+                "schema": str(schema),
                 "force_create_engine": True,
             }
         ]

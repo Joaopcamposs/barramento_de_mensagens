@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from business_contexts.security import UserSecurity
+from libs.security import UserSecurity
 from messagebus.entities import AuditBase, UserBase
 
 
@@ -20,10 +20,10 @@ class User(AuditBase, UserBase, UserSecurity):
 
 @dataclass(kw_only=True)
 class PublicUser(UserSecurity):
-    """Entidade de leitura que representa um usuário público (dados criptografados)."""
+    """Entidade de leitura que representa um usuário público para roteamento de tenant."""
 
     id: UUID
     company: UUID
-    active: bool
     email_encrypted: bytes
-    email_hash: str
+    email_lookup_hmac: str
+    cpf_lookup_hmac: str | None

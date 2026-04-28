@@ -20,6 +20,7 @@ class AbstractUserDomainRepo(DomainRepository):
     """Repositório abstrato de domínio para User."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Inicializa o repositório e o conjunto de agregados rastreados."""
         super().__init__(*args, **kwargs)
         self.seen: set[User] = set()
 

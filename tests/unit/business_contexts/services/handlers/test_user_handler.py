@@ -107,19 +107,19 @@ class TestUserHandlers:
             id=uuid7.create(),
             company=uuid7.create(),
             email="user@example.com",
+            cpf="12345678901",
             password_hash="hashed",
             active=True,
         )
         public_user = SimpleNamespace(
             id=private_user.id,
-            register=lambda: None,
-            update=lambda **_: None,
-            remove=lambda: None,
+            update_cpf=lambda **_: None,
         )
 
         domain_repo = SimpleNamespace(
             add_public_user=AsyncMock(),
             get_public_user_by_id=AsyncMock(return_value=public_user),
+            update_public_user_cpf=AsyncMock(),
             remove_public_user=AsyncMock(),
         )
         view_repo = SimpleNamespace(get_by_id=AsyncMock(return_value=private_user))
@@ -153,4 +153,5 @@ class TestUserHandlers:
 
         assert created_id == private_user.id
         domain_repo.add_public_user.assert_awaited()
+        domain_repo.update_public_user_cpf.assert_awaited_once()
         domain_repo.remove_public_user.assert_awaited_once()

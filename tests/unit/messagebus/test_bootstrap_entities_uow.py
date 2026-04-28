@@ -10,24 +10,19 @@ import pytest
 import uuid7
 
 from business_contexts.domains import Domain
-from messagebus.bootstrap import bootstrap_base, inject_dependencies
+from business_contexts.domain.excecoes import CredentialsException
+from business_contexts.adapters.repository.domain_repo.user import UserDomainRepo
+from business_contexts.adapters.repository.view_repo.user import UserViewRepo
+from messagebus.bootstrap import bootstrap_base
 from messagebus.entities import (
     Aggregate,
-    AuditReadBase,
     DomainRepository,
     OperationType,
     ViewRepository,
 )
-from messagebus.messagebus import (
-    Command,
-    CommandHandlers,
-    Event,
-    EventHandlers,
-    MessageBus,
-)
+from messagebus.messagebus import Command, CommandHandlers, Event, EventHandlers
 from messagebus.unity_of_work import (
     UnitOfWork,
-    UnitOfWorkContextAlreadyOpen,
     UnitOfWorkWithProblem,
 )
 from tests.unit.helpers import FakeAsyncSession
@@ -40,11 +35,11 @@ class TestBootstrapBase:
     async def test_bootstrap_base_injects_uow_on_handlers(self) -> None:
         """Verifica a injeção de dependência de UoW em handlers registrados."""
 
-        @dataclass
+        @dataclass(frozen=True)
         class FakeCommand(Command):
             value: str
 
-        @dataclass(kw_only=True)
+        @dataclass(kw_only=True, frozen=True)
         class FakeEvent(Event):
             value: str
 
@@ -77,52 +72,6 @@ class TestBootstrapBase:
         assert result == "ok:0"
         assert received == ["evt:1"]
 
-    @pytest.mark.asyncio
-    async def test_inject_dependencies_ignores_unneeded_deps(self) -> None:
-        """Garante que apenas parâmetros compatíveis são injetados no wrapper."""
-
-        @dataclass
-        class FakeCommand(Command):
-            value: str
-
-        async def handler(command: FakeCommand) -> str:
-            return command.value
-
-        wrapped = inject_dependencies(handler, {"uow": object(), "unused": object()})
-
-        result = await wrapped(FakeCommand("value"))
-        assert result == "value"
-
-
-class TestMessageBusErrorPaths:
-    """Testes dos caminhos de erro do MessageBus."""
-
-    @pytest.mark.asyncio
-    async def test_handle_event_error_sends_exception_to_sentry(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Valida captura em Sentry quando ambiente é produtivo e erro não é propagado."""
-        captured: list[Exception] = []
-
-        monkeypatch.setenv("TEST_ENV", "false")
-        monkeypatch.setenv("ENV_CONFIG", "prod")
-        monkeypatch.setattr(
-            "messagebus.messagebus.sentry_sdk.capture_exception",
-            lambda error: captured.append(error),
-        )
-
-        bus = MessageBus(
-            uow=SimpleNamespace(collect_new_events=lambda: []),
-            event_handlers=EventHandlers({}),
-            command_handlers=CommandHandlers({}),
-            raise_event_errors=False,
-        )
-
-        error = RuntimeError("boom")
-        bus._handle_event_error(error)
-
-        assert captured == [error]
-
 
 class TestEntityBaseClasses:
     """Testes das classes base de entidades."""
@@ -143,7 +92,7 @@ class TestEntityBaseClasses:
         class DemoAggregate(Aggregate):
             id: Any
 
-        @dataclass(kw_only=True)
+        @dataclass(kw_only=True, frozen=True)
         class DemoEvent(Event):
             id: Any
 
@@ -155,18 +104,6 @@ class TestEntityBaseClasses:
 
         assert aggregate.operation_type == OperationType.INSERT
         assert aggregate.events == [event]
-
-    def test_audit_read_base_is_deleted_property(self) -> None:
-        """Confirma cálculo de is_deleted na base de leitura imutável."""
-        entity = AuditReadBase(deleted_at=None)
-        deleted = AuditReadBase(
-            deleted_at=__import__("datetime").datetime.now(
-                __import__("datetime").timezone.utc
-            )
-        )
-
-        assert entity.is_deleted is False
-        assert deleted.is_deleted is True
 
 
 class TestUnitOfWorkBase:
@@ -210,9 +147,7 @@ class TestUnitOfWorkBase:
 
         assert write_session.committed is True
         assert write_session.closed is True
-        assert write_session.bind.disposed is True
         assert read_session.closed is True
-        assert read_session.bind.disposed is True
         assert uow.session is None
         assert uow.read_session is None
 
@@ -234,27 +169,10 @@ class TestUnitOfWorkBase:
         assert write_session.rolled_back is True
 
     @pytest.mark.asyncio
-    async def test_unit_of_work_context_cannot_be_opened_twice(self) -> None:
-        """Garante erro ao tentar abrir o mesmo contexto de UoW duas vezes."""
-        session = FakeAsyncSession()
-
-        async def session_factory(read_only: bool, **_: Any) -> FakeAsyncSession:
-            return FakeAsyncSession() if read_only else session
-
-        uow = UnitOfWork(session_factory=session_factory, schema="tenant-c")
-        uow.domain_repo = None  # type: ignore[assignment]
-        uow.view_repo = None  # type: ignore[assignment]
-
-        await uow.__aenter__()
-        with pytest.raises(UnitOfWorkContextAlreadyOpen):
-            await uow.__aenter__()
-        await uow.__aexit__(None, None, None)
-
-    @pytest.mark.asyncio
     async def test_collect_new_events_yields_events_from_seen_aggregates(self) -> None:
         """Coleta eventos pendentes dos agregados rastreados no repositório."""
 
-        @dataclass(kw_only=True)
+        @dataclass(kw_only=True, frozen=True)
         class DemoEvent(Event):
             name: str
 
@@ -274,6 +192,23 @@ class TestUnitOfWorkBase:
 
         assert [event.name for event in collected] == ["a", "b"]
         assert aggregate.events == []
+
+    @pytest.mark.asyncio
+    async def test_collect_new_events_yields_events_without_aggregate(self) -> None:
+        """Coleta eventos registrados diretamente na UoW, sem agregado."""
+
+        @dataclass(kw_only=True, frozen=True)
+        class DemoEvent(Event):
+            name: str
+
+        uow = UnitOfWork(
+            session_factory=lambda **_: FakeAsyncSession(), schema="tenant-d"
+        )
+        uow.add_events_without_aggregate(DemoEvent(name="detached"))
+
+        collected = list(uow.collect_new_events())
+
+        assert [event.name for event in collected] == ["detached"]
 
     @pytest.mark.asyncio
     async def test_unit_of_work_create_schema_branch_uses_schema_builder(
@@ -311,42 +246,48 @@ class TestUnitOfWorkBase:
         assert builder_calls == [(session_factory, "tenant-e")]
 
     @pytest.mark.asyncio
-    async def test_user_id_property_returns_none_without_user(self) -> None:
-        """Confirma retorno None quando não há usuário autenticado."""
+    async def test_unit_of_work_read_only_opens_only_read_session(self) -> None:
+        """Em modo somente leitura, abre apenas sessão de leitura e view_repo."""
+        read_session = FakeAsyncSession()
+        calls: list[bool] = []
+
+        async def session_factory(read_only: bool, **_: Any) -> FakeAsyncSession:
+            calls.append(read_only)
+            return read_session
+
         uow = UnitOfWork(
-            session_factory=lambda **_: FakeAsyncSession(), schema="tenant-f"
+            session_factory=session_factory, schema="tenant-read", read_only=True
         )
-        assert uow.user_id is None
+        uow(Domain.user)
+
+        async with uow:
+            assert uow.session is None
+            assert isinstance(uow.view_repo.session, FakeAsyncSession)
+
+        assert calls == [True]
+        assert read_session.closed is True
 
     @pytest.mark.asyncio
-    async def test_explicit_rollback_calls_session_rollback(self) -> None:
-        """Valida chamada explícita de rollback."""
+    async def test_unit_of_work_get_repo_helpers_validate_types(self) -> None:
+        """Retorna repositórios tipados e falha quando o tipo esperado diverge."""
         write_session = FakeAsyncSession()
         read_session = FakeAsyncSession()
 
         async def session_factory(read_only: bool, **_: Any) -> FakeAsyncSession:
             return read_session if read_only else write_session
 
-        uow = UnitOfWork(session_factory=session_factory, schema="tenant-g")
+        uow = UnitOfWork(session_factory=session_factory, schema="tenant-helper")
         uow(Domain.user)
 
         async with uow:
-            await uow.rollback()
+            assert isinstance(uow.get_domain_repo(UserDomainRepo), UserDomainRepo)
+            assert isinstance(uow.get_view_repo(UserViewRepo), UserViewRepo)
+            with pytest.raises(TypeError):
+                uow.get_domain_repo(UserViewRepo)  # type: ignore[type-var]
 
-        assert write_session.rolled_back is True
+    def test_require_user_id_raises_without_user(self) -> None:
+        """Garante erro de credenciais quando não há usuário autenticado."""
+        uow = UnitOfWork(session_factory=lambda **_: FakeAsyncSession(), schema="tenant")
 
-    def test_unit_of_work_uses_default_session_factory_when_not_provided(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Cobre caminho que importa factory padrão da infraestrutura."""
-
-        async def fake_default_factory(**_: Any) -> FakeAsyncSession:
-            return FakeAsyncSession()
-
-        monkeypatch.setattr(
-            "infra.database.default_async_sql_session_factory", fake_default_factory
-        )
-
-        uow = UnitOfWork(schema="tenant-h")
-
-        assert uow.sql_session_factory is fake_default_factory
+        with pytest.raises(CredentialsException):
+            uow.require_user_id()

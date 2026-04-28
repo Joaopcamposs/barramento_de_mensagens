@@ -1,7 +1,24 @@
+from dataclasses import dataclass
+
+from fastapi import HTTPException, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from business_contexts.services.handlers.security import (
+    get_current_admin_user,
+    get_current_user,
+)
 from messagebus.bootstrap import bootstrap_base
 from messagebus.entities import UserBase
-from messagebus.messagebus import MessageBus, EventHandlers, CommandHandlers
+from messagebus.messagebus import CommandHandlers, EventHandlers, MessageBus
 from messagebus.unity_of_work import AbstractUnitOfWork, UnitOfWork
+
+
+@dataclass
+class TokenInvalidoOuExpirado(HTTPException):
+    """Erro levantado quando o JWT fornecido nao e valido ou expirou."""
+
+    status_code: int = 401
+    detail: str = "Token JWT inválido ou expirado"
 
 
 def bootstrap(
@@ -48,4 +65,32 @@ def bootstrap(
         event_handlers=event_handlers,
         command_handlers=command_handlers,
         raise_event_errors=raise_event_errors,
+    )
+
+
+async def bootstrap_apis(
+    credentials: HTTPAuthorizationCredentials = Security(HTTPBearer()),
+) -> MessageBus:
+    """Bootstrap para APIs autenticadas validando o token e retornando o bus."""
+    user_of_token = await get_current_user(credentials.credentials)
+
+    if not user_of_token:
+        raise TokenInvalidoOuExpirado()
+
+    return bootstrap(
+        user=user_of_token,
+    )
+
+
+async def bootstrap_apis_admin(
+    credentials: HTTPAuthorizationCredentials = Security(HTTPBearer()),
+) -> MessageBus:
+    """Bootstrap para APIs autenticadas validando o token e retornando o bus."""
+    user_of_token = await get_current_admin_user(credentials.credentials)
+
+    if not user_of_token:
+        raise TokenInvalidoOuExpirado()
+
+    return bootstrap(
+        user=user_of_token,
     )

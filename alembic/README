@@ -1,0 +1,6 @@
+Alembic migrations for the template backend.
+
+Use `make upgrade` to apply migrations to every managed schema, or pass a
+specific schema with:
+
+    uv run alembic -x schema=<schema_name> upgrade head

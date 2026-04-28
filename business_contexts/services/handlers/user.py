@@ -108,7 +108,6 @@ async def create_public_user(event: UserCreated, uow: UnitOfWork) -> UUID:
 
         user = await view_repo.get_by_id(id=event.id)
         public_user = PublicUser.create_registration_aggregate(user=user)
-        public_user.register()
 
         await domain_repo.add_public_user(
             public_user=public_user,
@@ -119,7 +118,7 @@ async def create_public_user(event: UserCreated, uow: UnitOfWork) -> UUID:
 
 
 async def update_public_user(event: UserUpdated, uow: UnitOfWork) -> None:
-    """Handler para atualização do usuário público após atualização do usuário privado."""
+    """Handler para atualização do CPF no usuário público após atualização do privado."""
     async with uow(Domain.user) as uow:
         domain_repo: UserDomainRepo = cast(UserDomainRepo, uow.domain_repo)
         view_repo: UserViewRepo = cast(UserViewRepo, uow.view_repo)
@@ -127,27 +126,18 @@ async def update_public_user(event: UserUpdated, uow: UnitOfWork) -> None:
         private_user = await view_repo.get_by_id(id=event.id)
 
         public_user = await domain_repo.get_public_user_by_id(id=event.id)
-        public_user.update(
-            email=private_user.email,
-            password=private_user.password_hash,
-            active=private_user.active,
-        )
-
-        await domain_repo.add_public_user(
-            public_user=public_user,
-        )
+        if public_user:
+            public_user.update_cpf(cpf=private_user.cpf)
+            await domain_repo.update_public_user_cpf(public_user=public_user)
         await uow.commit()
 
 
 async def remove_public_user(event: UserDeleted, uow: UnitOfWork) -> None:
-    """Handler para remoção (soft delete) do usuário público após exclusão do usuário privado."""
+    """Handler para remoção do usuário público após exclusão do usuário privado."""
     async with uow(Domain.user) as uow:
         domain_repo: UserDomainRepo = cast(UserDomainRepo, uow.domain_repo)
 
         public_user = await domain_repo.get_public_user_by_id(id=event.id)
-        public_user.remove()
-
-        await domain_repo.remove_public_user(
-            public_user=public_user,
-        )
+        if public_user:
+            await domain_repo.remove_public_user(public_user=public_user)
         await uow.commit()

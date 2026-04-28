@@ -402,13 +402,27 @@ class TestCompanySchemas:
             responsible_name="John Doe",
             email="contact@acme.com",
             cpf="12345678901",
-            password="secret123",
+            password="Secret123",
         )
 
         assert schema.legal_name == "Acme Corp"
         assert schema.active is True
         assert schema.trade_name is None
         assert schema.cnpj is None
+
+    def test_create_company_schema_rejects_weak_password(self) -> None:
+        """Rejeita senha de cadastro sem complexidade mínima."""
+        import pytest
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            CreateCompanySchema(
+                legal_name="Acme Corp",
+                responsible_name="John Doe",
+                email="contact@acme.com",
+                cpf="12345678901",
+                password="secret123",
+            )
 
     def test_update_company_schema(self) -> None:
         """Verifica o schema de atualização de empresa."""

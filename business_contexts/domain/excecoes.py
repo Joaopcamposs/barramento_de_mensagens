@@ -14,6 +14,14 @@ class UserAlreadyRegistered(HTTPException):
 
 
 @dataclass
+class UserCpfAlreadyRegistered(HTTPException):
+    """Exceção lançada quando o CPF do usuário já está cadastrado."""
+
+    status_code: int = 409
+    detail: str = "User CPF already registered"
+
+
+@dataclass
 class UserNotFound(HTTPException):
     """Exceção lançada quando o usuário não é encontrado."""
 
@@ -43,3 +51,19 @@ class CredentialsException(HTTPException):
 
     status_code: int = 401
     detail: str = "Could not validate credentials"
+
+
+@dataclass
+class InvalidCredentials(HTTPException):
+    """Exceção lançada quando as credenciais do usuário estão incorretas."""
+
+    status_code: int = 400
+    detail: str = "Incorrect username or password"
+
+
+@dataclass
+class InvalidRefreshToken(HTTPException):
+    """Exceção lançada quando o refresh token é inválido."""
+
+    status_code: int = 401
+    detail: str = "Invalid refresh token"

@@ -139,13 +139,12 @@ class UserViewRepo(ViewRepository):
         Returns:
             Entidade PublicUser ou None se não encontrado.
         """
-        email_hash = PublicUser.hash_email(email)
+        email_lookup_hmac = PublicUser.compute_email_lookup_hmac(email)
         async with self.session as session:
             result = (
                 await session.execute(
                     select(PublicUserAggregate).where(
-                        PublicUserAggregate.email_hash == email_hash,
-                        PublicUserAggregate.deleted_at.is_(None),
+                        PublicUserAggregate.email_lookup_hmac == email_lookup_hmac,
                     )
                 )
             ).scalar_one_or_none()
@@ -155,9 +154,8 @@ class UserViewRepo(ViewRepository):
             public_user_entity = PublicUser(
                 id=result.id,
                 company=result.company,
-                active=result.active,
                 email_encrypted=result.email_encrypted,
-                email_hash=result.email_hash,
-                _password_hash=result.password_hash,
+                email_lookup_hmac=result.email_lookup_hmac,
+                cpf_lookup_hmac=result.cpf_lookup_hmac,
             )
             return public_user_entity

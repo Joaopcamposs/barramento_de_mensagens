@@ -3,17 +3,24 @@ export COMPOSE_TEST_NAME=$(COMPOSE_NAME)_test
 
 # ── Lint & Quality ──────────────────────────────────────────────────
 ruff:
-	ruff format . && ruff check . --fix
+	uv run ruff format . && uv run ruff check . --fix
 
 lint: ruff
 
 mypy:
-	mypy business_contexts/ infra/ messagebus/ libs/
+	uv run mypy business_contexts/ infra/ messagebus/ libs/
+
+ty:
+	uv run ty check
 
 typecheck: mypy
 
 check: lint typecheck
 	@echo "✔ Lint (ruff) e type-check (mypy) passaram."
+
+# ── Aplicação ───────────────────────────────────────────────────────
+run:
+	uv run uvicorn business_contexts.main:app --host 0.0.0.0 --port 8000 --reload
 
 # ── Banco de dados (postgres) ────────────────────────────────────────────────────
 postgres-up:
@@ -28,6 +35,16 @@ postgres-destroy:
 
 postgres-logs:
 	docker compose -f docker-compose.yml -p $(COMPOSE_NAME) logs postgres -f
+
+# ── Migrações ───────────────────────────────────────────────────────
+upgrade:
+	uv run alembic upgrade head
+
+downgrade:
+	uv run alembic downgrade -1
+
+migration:
+	uv run alembic revision -m "$(m)"
 
 # ── Deploy: App (porta 8000) ──────────────────────────────────
 compose:
@@ -48,18 +65,18 @@ test-env-down:
 
 # ── Testes ──────────────────────────────────────────────────────────
 test-unit:
-	python -m pytest tests/unit/ -v
+	uv run python -m pytest tests/unit/ -v
 
 test-integration: test-env
-	python -m pytest tests/integration/ -v; \
+	uv run python -m pytest tests/integration/ -v; \
 	$(MAKE) test-env-down
 
 test-all: test-env
-	python -m pytest tests/ -v; \
+	uv run python -m pytest tests/ -v; \
 	$(MAKE) test-env-down
 
 test-cov: test-env
-	python -m pytest tests/ -v --cov=business_contexts --cov=infra --cov=messagebus --cov-report=term-missing; \
+	uv run python -m pytest tests/ -v --cov=business_contexts --cov=infra --cov=messagebus --cov-report=term-missing; \
 	$(MAKE) test-env-down
 
 # ── Limpeza ─────────────────────────────────────────────────────────
@@ -76,8 +93,15 @@ help:
 	@echo "  make postgres-logs     → Logs Postgres"
 	@echo "  make postgres-destroy  → Para Postgres e remove volumes"
 	@echo ""
+	@echo "  Migrações"
+	@echo "  ──────────────────────────────────────────────────"
+	@echo "  make upgrade           → Aplica migrações Alembic até head"
+	@echo "  make downgrade         → Reverte uma revisão Alembic"
+	@echo "  make migration m=nome  → Cria nova revisão Alembic"
+	@echo ""
 	@echo "  Deploy (Docker)"
 	@echo "  ──────────────────────────────────────────────────"
+	@echo "  make run               → Roda API local com reload"
 	@echo "  make compose           → Sobe API + Postgres (:8000)"
 	@echo "  make compose-down      → Para todos os containers"
 	@echo "  make compose-logs      → Logs dos containers"
@@ -94,6 +118,8 @@ help:
 	@echo "  Qualidade"
 	@echo "  ──────────────────────────────────────────────────"
 	@echo "  make lint              → Formata e corrige lint com ruff"
+	@echo "  make mypy              → Verifica tipos com mypy"
+	@echo "  make ty                → Verifica tipos com ty"
 	@echo "  make typecheck         → Verifica tipos com mypy"
 	@echo ""
 	@echo "  Limpeza"

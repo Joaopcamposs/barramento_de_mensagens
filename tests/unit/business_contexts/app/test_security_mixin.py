@@ -5,7 +5,7 @@ from datetime import timedelta
 
 import uuid7
 
-from business_contexts.security import UserSecurity
+from libs.security import UserSecurity
 
 
 class TestUserSecurityToken:
@@ -17,14 +17,12 @@ class TestUserSecurityToken:
 
     def test_generate_token_with_custom_expiration(self) -> None:
         """Usa expires_delta no token gerado em vez do padrão."""
-        security = self.DummySecurity()
-        encrypted = security.encrypt_email("user@example.com")
-
-        token = security.generate_token(
+        token = self.DummySecurity.generate_token(
+            user_id=uuid7.create(),
             company_id=uuid7.create(),
-            encrypted_email=encrypted,
             expires_delta=timedelta(minutes=5),
         )
 
         assert token.token_type == "bearer"
         assert isinstance(token.access_token, str)
+        assert isinstance(token.refresh_token, str)

@@ -2,11 +2,11 @@
 
 import pytest
 
-from libs.basic_types import CNPJ, CPF, Email
+from libs.basic_types import CNPJ, CPF, Email, Phone
 
 
 class TestBasicTypes:
-    """Testes para tipos básicos de CPF, CNPJ e Email."""
+    """Testes para tipos básicos de CPF, CNPJ, Email e Phone."""
 
     def test_cpf_validates_and_normalizes_digits(self) -> None:
         """Normaliza CPF removendo pontuação e mantém valor em string."""
@@ -34,3 +34,19 @@ class TestBasicTypes:
         """Converte email para minúsculo e ignora entradas não textuais."""
         assert Email("User@Example.COM") == "user@example.com"
         assert Email.__new__(Email, 123) is None  # type: ignore[arg-type]
+
+    def test_phone_normalizes_digits(self) -> None:
+        """Normaliza telefone removendo caracteres não numéricos."""
+        assert Phone("+55 (11) 91234-5678") == "5511912345678"
+
+    def test_phone_rejects_invalid_lengths(self) -> None:
+        """Lança erro quando o telefone não tem tamanho aceito."""
+        with pytest.raises(ValueError, match="Telefone inválido"):
+            Phone("5511999")
+
+    def test_phone_rejects_zero_ddi_or_ddd(self) -> None:
+        """Lança erro quando DDI ou DDD têm formato inválido."""
+        with pytest.raises(ValueError, match="Telefone inválido"):
+            Phone("0011912345678")
+        with pytest.raises(ValueError, match="Telefone inválido"):
+            Phone("5501912345678")

@@ -11,7 +11,7 @@ from business_contexts.domain.events.user import (
     UserDeleted,
     UserUpdated,
 )
-from business_contexts.security import UserSecurity
+from libs.security import UserSecurity
 from messagebus.entities import Aggregate, OperationType
 
 
@@ -26,6 +26,7 @@ class User(Aggregate, UserSecurity):
     admin: bool
 
     def __hash__(self) -> int:
+        """Retorna um hash estável baseado no identificador do agregado."""
         return hash(self.id)
 
     @staticmethod
@@ -150,15 +151,17 @@ class User(Aggregate, UserSecurity):
 
 
 @dataclass(kw_only=True)
-class PublicUser(Aggregate, UserSecurity):
-    """Agregado que representa um usuário público (dados criptografados) no domínio."""
+class PublicUser(UserSecurity):
+    """Agregado que representa um usuário público para roteamento de tenant."""
 
     id: UUID
     company: UUID
     email_encrypted: bytes
-    email_hash: str
+    email_lookup_hmac: str
+    cpf_lookup_hmac: str | None
 
     def __hash__(self) -> int:
+        """Define hashing para o agregado PublicUser com base no ID."""
         return hash(self.id)
 
     @classmethod
@@ -176,38 +179,21 @@ class PublicUser(Aggregate, UserSecurity):
             Nova instância de PublicUser com email criptografado e hash.
         """
         encrypted_email = cls.encrypt_email(user.email)
-        email_hash = cls.hash_email(user.email)
+        email_lookup_hmac = cls.compute_email_lookup_hmac(user.email)
+        cpf_lookup_hmac = cls.compute_cpf_lookup_hmac(user.cpf) if user.cpf else None
 
         return PublicUser(
             id=user.id,
             company=user.company,
             email_encrypted=encrypted_email,
-            email_hash=email_hash,
-            _password_hash=user.password_hash,
-            active=user.active,
+            email_lookup_hmac=email_lookup_hmac,
+            cpf_lookup_hmac=cpf_lookup_hmac,
         )
 
-    def register(self) -> None:
-        """Marca o agregado para inserção no banco de dados."""
-        self._operation_type = OperationType.INSERT
-
-    def update(self, email: str, password: str, active: bool) -> None:
-        """
-        Atualiza os dados do usuário público.
-
-        Args:
-            email: Novo email (será criptografado e hasheado).
-            password: Novo hash da senha.
-            active: Novo status de ativação.
-        """
-        self._operation_type = OperationType.UPDATE
-
-        self.email_encrypted = self.encrypt_email(email)
-        self.email_hash = self.hash_email(email)
-        self._password_hash = password
-        self.active = active
+    def update_cpf(self, cpf: str | None) -> None:
+        """Atualiza o HMAC de lookup do CPF."""
+        self.cpf_lookup_hmac = type(self).compute_cpf_lookup_hmac(cpf) if cpf else None
 
     def remove(self) -> None:
-        """Marca o agregado como deletado (soft delete)."""
-        self._operation_type = OperationType.DELETE
-        self._set_delete_audit(user_id=None)
+        """Marca o agregado como deletado via flag interna."""
+        self._deleted = True

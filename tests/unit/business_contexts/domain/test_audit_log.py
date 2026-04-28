@@ -23,12 +23,14 @@ class TestAuditableEvent:
     """Testes para o mixin AuditableEvent."""
 
     def test_auditable_event_default_values(self) -> None:
+        """Verifica os valores padrão de um evento auditável."""
         event = AuditableEvent()
         assert event.entity_type == ""
         assert event.old_data is None
         assert event.new_data is None
 
     def test_auditable_event_with_data(self) -> None:
+        """Verifica que o evento auditável preserva metadados informados."""
         event = AuditableEvent(
             entity_type="TestEntity", old_data={"a": 1}, new_data={"a": 2}
         )
@@ -37,9 +39,10 @@ class TestAuditableEvent:
         assert event.new_data == {"a": 2}
 
     def test_combined_event_has_both_attributes(self) -> None:
+        """Verifica que um evento combinado expõe atributos de Event e AuditableEvent."""
         from dataclasses import dataclass
 
-        @dataclass(kw_only=True)
+        @dataclass(kw_only=True, frozen=True)
         class TestEvent(AuditableEvent, Event):
             id: UUID
 
@@ -56,6 +59,7 @@ class TestAuditLogEntity:
     """Testes para a entidade de leitura AuditLog."""
 
     def test_audit_log_creation_with_all_fields(self) -> None:
+        """Verifica a criação da entidade AuditLog com todos os campos."""
         uid = uuid7.create()
         entity_id = uuid7.create()
         now = datetime.now(timezone.utc)
@@ -74,6 +78,7 @@ class TestAuditLogEntity:
         assert audit.user_id == _TEST_USER_ID
 
     def test_audit_log_optional_fields_default_none(self) -> None:
+        """Verifica os valores padrão dos campos opcionais do AuditLog."""
         audit = AuditLogRead(
             id=uuid7.create(),
             entity_type=EntityType.USER,
@@ -86,6 +91,7 @@ class TestAuditLogEntity:
         assert audit.new_data is None
 
     def test_audit_log_is_frozen(self) -> None:
+        """Verifica que a entidade de leitura AuditLog é imutável."""
         audit = AuditLogRead(
             id=uuid7.create(),
             entity_type=EntityType.COMPANY,
@@ -101,6 +107,7 @@ class TestCompanyAuditData:
     """Testes para dados de auditoria emitidos pelo agregado Company."""
 
     def test_create_emits_audit_data_in_event(self) -> None:
+        """Verifica que a criação de Company emite dados de auditoria."""
         from business_contexts.domain.aggregate.company import Company
         from business_contexts.domain.events.company import CompanyCreated
 
@@ -122,7 +129,8 @@ class TestCompanyAuditData:
         assert event.new_data["legal_name"] == "Acme Corp"
         assert event.new_data["active"] is True
 
-    def test_update_emits_old_and_new_data(self) -> None:
+    def test_company_update_emits_old_and_new_data(self) -> None:
+        """Verifica que a atualização de Company emite dados antigos e novos."""
         from business_contexts.domain.aggregate.company import Company
         from business_contexts.domain.events.company import CompanyUpdated
 
@@ -143,6 +151,7 @@ class TestCompanyAuditData:
         assert event.new_data == {"legal_name": "New Acme Corp", "active": False}
 
     def test_update_only_changed_fields(self) -> None:
+        """Verifica que a atualização de Company audita apenas campos alterados."""
         from business_contexts.domain.aggregate.company import Company
         from business_contexts.domain.events.company import CompanyUpdated
 
@@ -161,7 +170,8 @@ class TestCompanyAuditData:
         assert event.old_data == {"email": "contact@acme.com"}
         assert event.new_data == {"email": "new@acme.com"}
 
-    def test_delete_emits_old_data(self) -> None:
+    def test_company_delete_emits_old_data(self) -> None:
+        """Verifica que a exclusão de Company emite os dados anteriores."""
         from business_contexts.domain.aggregate.company import Company
         from business_contexts.domain.events.company import CompanyDeleted
 
@@ -187,6 +197,7 @@ class TestUserAuditData:
     """Testes para dados de auditoria emitidos pelo agregado User."""
 
     def test_create_emits_audit_data(self) -> None:
+        """Verifica que a criação de User emite dados de auditoria."""
         from business_contexts.domain.aggregate.user import User
         from business_contexts.domain.events.user import UserCreated
 
@@ -206,7 +217,8 @@ class TestUserAuditData:
         assert event.new_data["email"] == "test@example.com"
         assert event.new_data["active"] is True
 
-    def test_update_emits_old_and_new_data(self) -> None:
+    def test_user_update_emits_old_and_new_data(self) -> None:
+        """Verifica que a atualização de User emite dados antigos e novos."""
         from business_contexts.domain.aggregate.user import User
         from business_contexts.domain.events.user import UserUpdated
 
@@ -224,6 +236,7 @@ class TestUserAuditData:
         assert event.new_data["email"] == "new@example.com"
 
     def test_update_password_is_redacted(self) -> None:
+        """Verifica que a atualização de senha é mascarada na auditoria."""
         from business_contexts.domain.aggregate.user import User
         from business_contexts.domain.events.user import UserUpdated
 
@@ -238,7 +251,8 @@ class TestUserAuditData:
         assert isinstance(event, UserUpdated)
         assert event.new_data["password"] == AuditConstant.REDACTED_PASSWORD
 
-    def test_delete_emits_old_data(self) -> None:
+    def test_user_delete_emits_old_data(self) -> None:
+        """Verifica que a exclusão de User emite os dados anteriores."""
         from business_contexts.domain.aggregate.user import User
         from business_contexts.domain.events.user import UserDeleted
 
@@ -262,6 +276,7 @@ class TestEventsAreAuditable:
     """Testes para garantir que os eventos de domínio são auditáveis."""
 
     def test_company_created_is_auditable(self) -> None:
+        """Verifica que CompanyCreated é um evento auditável."""
         from business_contexts.domain.events.company import CompanyCreated
 
         event = CompanyCreated(id=uuid7.create())
@@ -269,16 +284,19 @@ class TestEventsAreAuditable:
         assert isinstance(event, Event)
 
     def test_company_updated_is_auditable(self) -> None:
+        """Verifica que CompanyUpdated é um evento auditável."""
         from business_contexts.domain.events.company import CompanyUpdated
 
         assert isinstance(CompanyUpdated(id=uuid7.create()), AuditableEvent)
 
     def test_company_deleted_is_auditable(self) -> None:
+        """Verifica que CompanyDeleted é um evento auditável."""
         from business_contexts.domain.events.company import CompanyDeleted
 
         assert isinstance(CompanyDeleted(id=uuid7.create()), AuditableEvent)
 
     def test_user_created_is_auditable(self) -> None:
+        """Verifica que UserCreated é um evento auditável."""
         from business_contexts.domain.events.user import UserCreated
 
         assert isinstance(
@@ -286,6 +304,7 @@ class TestEventsAreAuditable:
         )
 
     def test_user_updated_is_auditable(self) -> None:
+        """Verifica que UserUpdated é um evento auditável."""
         from business_contexts.domain.events.user import UserUpdated
 
         assert isinstance(
@@ -293,6 +312,7 @@ class TestEventsAreAuditable:
         )
 
     def test_user_deleted_is_auditable(self) -> None:
+        """Verifica que UserDeleted é um evento auditável."""
         from business_contexts.domain.events.user import UserDeleted
 
         assert isinstance(
@@ -304,11 +324,13 @@ class TestAuditLogDomainRegistration:
     """Testes para o registro do domínio audit_log no enum Domain."""
 
     def test_audit_log_domain_exists(self) -> None:
+        """Verifica que o domínio audit_log está registrado."""
         from business_contexts.domains import Domain
 
         assert hasattr(Domain, "audit_log")
 
     def test_audit_log_domain_has_domain_repo(self) -> None:
+        """Verifica que o domínio audit_log aponta para o repositório de escrita."""
         from business_contexts.adapters.repository.domain_repo.audit_log import (
             AuditLogDomainRepo,
         )
@@ -317,6 +339,7 @@ class TestAuditLogDomainRegistration:
         assert Domain.audit_log.value[0] is AuditLogDomainRepo
 
     def test_audit_log_domain_has_view_repo(self) -> None:
+        """Verifica que o domínio audit_log aponta para o repositório de leitura."""
         from business_contexts.adapters.repository.view_repo.audit_log import (
             AuditLogViewRepo,
         )
@@ -329,6 +352,7 @@ class TestAuditHandlersRegistration:
     """Testes para o registro dos handlers de auditoria nos event handlers."""
 
     def test_company_events_have_audit_handlers(self) -> None:
+        """Verifica que eventos de Company têm handlers de auditoria."""
         from business_contexts.domain.events.company import (
             CompanyCreated,
             CompanyDeleted,
@@ -346,6 +370,7 @@ class TestAuditHandlersRegistration:
         assert audit_entity_deleted in EVENT_HANDLERS[CompanyDeleted]
 
     def test_user_events_have_audit_handlers(self) -> None:
+        """Verifica que eventos de User têm handlers de auditoria."""
         from business_contexts.domain.events.user import (
             UserCreated,
             UserDeleted,
@@ -367,6 +392,7 @@ class TestAuditBase:
     """Testes para a classe base AuditBase."""
 
     def test_audit_base_default_values(self) -> None:
+        """Verifica os valores padrão da base de auditoria."""
         from messagebus.entities import AuditBase
 
         audit = AuditBase()
@@ -377,16 +403,19 @@ class TestAuditBase:
         assert audit.deleted_by is None
 
     def test_audit_base_is_deleted_false_when_no_deleted_at(self) -> None:
+        """Verifica que a base de auditoria não é deletada sem deleted_at."""
         from messagebus.entities import AuditBase
 
         assert AuditBase().is_deleted is False
 
     def test_audit_base_is_deleted_true_when_set(self) -> None:
+        """Verifica que a base de auditoria é deletada quando deleted_at existe."""
         from messagebus.entities import AuditBase
 
         assert AuditBase(deleted_at=datetime.now(timezone.utc)).is_deleted is True
 
     def test_audit_read_base_is_frozen(self) -> None:
+        """Verifica que a base de auditoria de leitura é imutável."""
         from messagebus.entities import AuditReadBase
 
         audit = AuditReadBase()
@@ -394,11 +423,13 @@ class TestAuditBase:
             setattr(audit, "active", False)
 
     def test_aggregate_inherits_audit_base(self) -> None:
+        """Verifica que Aggregate herda os campos da base de auditoria."""
         from messagebus.entities import Aggregate, AuditBase
 
         assert issubclass(Aggregate, AuditBase)
 
     def test_aggregate_set_create_audit(self) -> None:
+        """Verifica o preenchimento dos campos de auditoria de criação."""
         from business_contexts.domain.aggregate.company import Company
 
         company = Company.create_aggregate(
@@ -416,6 +447,7 @@ class TestAuditBase:
         assert company.created_by == uid
 
     def test_aggregate_set_delete_audit(self) -> None:
+        """Verifica o preenchimento dos campos de auditoria de exclusão."""
         from business_contexts.domain.aggregate.company import Company
 
         company = Company.create_aggregate(

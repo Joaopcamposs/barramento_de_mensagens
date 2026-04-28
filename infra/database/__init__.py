@@ -1,6 +1,7 @@
 """Módulo de configuração e gerenciamento do banco de dados."""
 
 import os
+import re
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -12,11 +13,45 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import registry
 
-from business_contexts.security import UserSecurity
+from business_contexts.domain.excecoes import UserCpfAlreadyRegistered
+from libs.security import UserSecurity
 
 mapper_registry = registry()
 
 engine: AsyncEngine | None = None
+
+_SAFE_SCHEMA_RE = re.compile(
+    r"^(public|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+)
+
+
+def _get_int_env(name: str, default: int) -> int:
+    """Le uma variavel inteira de ambiente, preservando um default seguro."""
+    value = os.getenv(name, "").strip()
+    if not value:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
+def _normalize_database_url(database_url: str) -> str:
+    """Normaliza URLs Postgres para o driver asyncpg usado pelo SQLAlchemy."""
+    if database_url.startswith("postgresql+asyncpg://"):
+        return database_url
+    if database_url.startswith("postgresql://"):
+        return database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if database_url.startswith("postgres://"):
+        return database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    return database_url
+
+
+def validate_schema_name(schema: str) -> str:
+    """Valida nomes de schema permitidos antes de interpolar comandos DDL."""
+    if not _SAFE_SCHEMA_RE.match(schema):
+        raise ValueError(f"Schema invalido: {schema}")
+    return schema
 
 
 def get_database_uri() -> str:
@@ -29,6 +64,20 @@ def get_database_uri() -> str:
     Returns:
         URI de conexão formatada.
     """
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        database_url = _normalize_database_url(database_url)
+        if os.getenv("TEST_ENV", "false").lower() == "true" and database_url.endswith(
+            "/postgres"
+        ):
+            raise RuntimeError(
+                "TEST_ENV está ativo mas DATABASE_URL aponta para o banco 'postgres'. "
+                "Use um banco de testes dedicado."
+            )
+        if os.getenv("IN_DOCKER", "false").lower() == "true":
+            database_url = database_url.replace(":54322/", ":5432/")
+        return database_url
+
     test_environment = os.getenv("TEST_ENV", "false").lower() == "true"
     in_docker = os.getenv("IN_DOCKER", "false").lower() == "true"
 
@@ -54,8 +103,10 @@ def get_database_uri() -> str:
 
 
 async def set_schema_name(session: AsyncSession, schema: str) -> None:
-    await session.execute(text(f'SET search_path TO "{schema}"'))
-    session.schema = str(schema)
+    """Ajusta o search_path da sessão para o schema informado."""
+    safe_schema = validate_schema_name(schema)
+    await session.execute(text(f'SET search_path TO "{safe_schema}"'))
+    session.schema = safe_schema
 
 
 def get_async_sql_engine(
@@ -74,6 +125,7 @@ def get_async_sql_engine(
     """
 
     def _create_engine() -> AsyncEngine:
+        """Cria uma nova engine ou reutiliza a engine global configurada."""
         global engine
 
         if force_create_engine:
@@ -89,6 +141,11 @@ def get_async_sql_engine(
                 get_database_uri(),
                 isolation_level=isolation_level,
                 future=True,
+                pool_pre_ping=True,
+                pool_size=_get_int_env("DB_POOL_SIZE", 3),
+                max_overflow=_get_int_env("DB_MAX_OVERFLOW", 2),
+                pool_timeout=_get_int_env("DB_POOL_TIMEOUT", 30),
+                pool_recycle=_get_int_env("DB_POOL_RECYCLE", 1800),
             )
         return engine
 
@@ -134,6 +191,7 @@ async def default_async_sql_session_factory(
     await set_schema_name(session, schema_in_use)
 
     async def async_close() -> None:
+        """Fecha a sessão assíncrona criada pela factory."""
         await session.close()
 
     session.async_close = async_close  # type: ignore[attr-defined]
@@ -173,6 +231,7 @@ SCHEMAS_TO_NOT_LIST: tuple[str, ...] = (
 
 
 async def list_existing_schemas() -> list[str]:
+    """Lista os schemas de tenant existentes no banco."""
     async with get_async_sql_engine().begin() as conn:
         result = await conn.execute(
             text("SELECT schema_name FROM information_schema.schemata")
@@ -181,8 +240,10 @@ async def list_existing_schemas() -> list[str]:
 
 
 async def delete_schema(schema_id: str) -> None:
+    """Remove um schema de tenant e seus objetos, se ele existir."""
+    safe_schema = validate_schema_name(schema_id)
     async with get_async_sql_engine().begin() as conn:
-        await conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema_id}" CASCADE;'))
+        await conn.execute(text(f'DROP SCHEMA IF EXISTS "{safe_schema}" CASCADE;'))
 
 
 async def validate_company_email(email: str) -> None:
@@ -190,12 +251,42 @@ async def validate_company_email(email: str) -> None:
     Percorre a tabela public.public_user e verifica se o hash do email
     é igual a algum existente.
     """
-    email_hash = UserSecurity.hash_email(email)
+    email_hash = UserSecurity.compute_email_lookup_hmac(email)
     async with get_async_sql_engine().begin() as conn:
+        public_user_exists = await conn.execute(
+            text("SELECT to_regclass('public.public_user')")
+        )
+        if not public_user_exists.fetchone():
+            return
+
         result = await conn.execute(
             text(
-                f"SELECT email_hash FROM public.public_user WHERE email_hash = '{email_hash}'"
-            )
+                "SELECT 1 FROM public.public_user WHERE email_lookup_hmac = :email_lookup_hmac"
+            ),
+            {"email_lookup_hmac": email_hash},
         )
         if result.fetchone():
             raise ValueError(f"Email {email} já existe em outra empresa!")
+
+
+async def validate_company_cpf(cpf: str | None) -> None:
+    """Verifica se o CPF ja esta em uso consultando o identificador global no schema publico."""
+    if not cpf:
+        return
+    cpf_lookup_hmac = UserSecurity.compute_cpf_lookup_hmac(cpf)
+    async with get_async_sql_engine().begin() as conn:
+        table_exists = await conn.execute(
+            text("SELECT to_regclass('public.public_user')")
+        )
+        if table_exists.scalar_one_or_none() is None:
+            return
+
+        result = await conn.execute(
+            text(
+                "SELECT cpf_lookup_hmac FROM public.public_user "
+                "WHERE cpf_lookup_hmac = :hash"
+            ),
+            {"hash": cpf_lookup_hmac},
+        )
+        if result.fetchone():
+            raise UserCpfAlreadyRegistered

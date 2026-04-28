@@ -19,6 +19,7 @@ class AbstractCompanyDomainRepo(DomainRepository):
     """Repositório abstrato de domínio para Company."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Inicializa o repositório e o conjunto de agregados rastreados."""
         super().__init__(*args, **kwargs)
         self.seen: set[Company] = set()
 
@@ -76,6 +77,13 @@ class CompanyDomainRepo(AbstractCompanyDomainRepo, UpsertMixin):
 
         await validate_company_email(email)
 
+    @staticmethod
+    async def validate_company_cpf(cpf: str) -> None:
+        """Valida se o CPF ja esta em uso por outra empresa."""
+        from infra.database import validate_company_cpf
+
+        await validate_company_cpf(cpf)
+
     async def create_aggregate(
         self,
         legal_name: str,
@@ -107,6 +115,7 @@ class CompanyDomainRepo(AbstractCompanyDomainRepo, UpsertMixin):
             CompanyAlreadyRegistered: Se já existe empresa com a mesma razão social.
         """
         await self.validate_company_email(email)
+        await self.validate_company_cpf(cpf)
 
         async with self.session as session:
             existing_company = (
