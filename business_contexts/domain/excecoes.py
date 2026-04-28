@@ -14,6 +14,14 @@ class UserAlreadyRegistered(HTTPException):
 
 
 @dataclass
+class UserCpfAlreadyRegistered(HTTPException):
+    """Exceção lançada quando o CPF do usuário já está cadastrado."""
+
+    status_code: int = 409
+    detail: str = "User CPF already registered"
+
+
+@dataclass
 class UserNotFound(HTTPException):
     """Exceção lançada quando o usuário não é encontrado."""
 

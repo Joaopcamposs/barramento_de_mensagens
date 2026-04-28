@@ -1,3 +1,5 @@
+"""Configuracao compartilhada de rate limiting."""
+
 from fastapi import Request
 from slowapi import Limiter
 
@@ -7,10 +9,14 @@ def _get_real_ip(request: Request) -> str:
     Retorna o IP real do cliente para uso no rate limiting.
 
     Ordem de preferência:
-    1. ``Fly-Client-IP`` – injetado pela infraestrutura do Fly.io.
+    1. ``Fly-Client-IP`` – injetado pela infraestrutura do Fly.io (não falsificável).
     2. ``CF-Connecting-IP`` – cabeçalho do proxy Cloudflare.
     3. ``X-Forwarded-For`` – primeiro IP da cadeia de proxies.
     4. ``request.client.host`` – conexão direta sem proxy.
+
+    Em ambiente local/teste, a conexão direta retorna ``127.0.0.1``.
+    No Fly.io, o cabeçalho ``Fly-Client-IP`` é sempre injetado, por isso o
+    fallback é atingido apenas em ambiente de desenvolvimento.
     """
     fly_ip = request.headers.get("Fly-Client-IP")
     if fly_ip:

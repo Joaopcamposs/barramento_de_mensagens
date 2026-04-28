@@ -1,3 +1,4 @@
+import hashlib
 import logging
 
 logger = logging.getLogger("MessageBus")
@@ -11,3 +12,9 @@ if not logger.handlers:
     )
     logger.addHandler(_handler)
     logger.propagate = False
+
+
+def fingerprint(value: object, *, length: int = 12) -> str:
+    """Retorna um hash curto para correlacionar dados sem expor PII em logs."""
+    normalized = str(value).strip().lower().encode()
+    return hashlib.sha256(normalized).hexdigest()[:length]

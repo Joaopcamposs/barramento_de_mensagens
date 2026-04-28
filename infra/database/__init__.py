@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import registry
 
+from business_contexts.domain.excecoes import UserCpfAlreadyRegistered
 from libs.security import UserSecurity
 
 mapper_registry = registry()
@@ -22,6 +23,17 @@ engine: AsyncEngine | None = None
 _SAFE_SCHEMA_RE = re.compile(
     r"^(public|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
 )
+
+
+def _get_int_env(name: str, default: int) -> int:
+    """Le uma variavel inteira de ambiente, preservando um default seguro."""
+    value = os.getenv(name, "").strip()
+    if not value:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
 
 
 def _normalize_database_url(database_url: str) -> str:
@@ -130,6 +142,10 @@ def get_async_sql_engine(
                 isolation_level=isolation_level,
                 future=True,
                 pool_pre_ping=True,
+                pool_size=_get_int_env("DB_POOL_SIZE", 3),
+                max_overflow=_get_int_env("DB_MAX_OVERFLOW", 2),
+                pool_timeout=_get_int_env("DB_POOL_TIMEOUT", 30),
+                pool_recycle=_get_int_env("DB_POOL_RECYCLE", 1800),
             )
         return engine
 
@@ -251,3 +267,26 @@ async def validate_company_email(email: str) -> None:
         )
         if result.fetchone():
             raise ValueError(f"Email {email} já existe em outra empresa!")
+
+
+async def validate_company_cpf(cpf: str | None) -> None:
+    """Verifica se o CPF ja esta em uso consultando o identificador global no schema publico."""
+    if not cpf:
+        return
+    cpf_lookup_hmac = UserSecurity.compute_cpf_lookup_hmac(cpf)
+    async with get_async_sql_engine().begin() as conn:
+        table_exists = await conn.execute(
+            text("SELECT to_regclass('public.public_user')")
+        )
+        if table_exists.scalar_one_or_none() is None:
+            return
+
+        result = await conn.execute(
+            text(
+                "SELECT cpf_lookup_hmac FROM public.public_user "
+                "WHERE cpf_lookup_hmac = :hash"
+            ),
+            {"hash": cpf_lookup_hmac},
+        )
+        if result.fetchone():
+            raise UserCpfAlreadyRegistered

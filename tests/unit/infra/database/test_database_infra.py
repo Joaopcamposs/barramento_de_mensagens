@@ -95,6 +95,31 @@ class TestDatabaseModule:
         assert engine_b == "engine-1"
         assert len(created) == 1
 
+    def test_get_async_sql_engine_uses_pool_env_options(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Aplica configurações de pool vindas de variáveis de ambiente."""
+        calls: list[dict[str, Any]] = []
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+        monkeypatch.setenv("DB_NAME", "test_db")
+        monkeypatch.setenv("DB_POOL_SIZE", "7")
+        monkeypatch.setenv("DB_MAX_OVERFLOW", "4")
+        monkeypatch.setenv("DB_POOL_TIMEOUT", "11")
+        monkeypatch.setenv("DB_POOL_RECYCLE", "900")
+
+        def fake_create(*args: Any, **kwargs: Any) -> str:
+            calls.append(kwargs)
+            return "engine"
+
+        monkeypatch.setattr(database, "create_async_engine", fake_create)
+        monkeypatch.setattr(database, "engine", None)
+
+        assert database.get_async_sql_engine() == "engine"
+        assert calls[0]["pool_size"] == 7
+        assert calls[0]["max_overflow"] == 4
+        assert calls[0]["pool_timeout"] == 11
+        assert calls[0]["pool_recycle"] == 900
+
     def test_get_async_sql_engine_force_create_ignores_cache(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -221,6 +246,31 @@ class TestDatabaseModule:
             await database.validate_company_email("user@example.com")
 
         assert connection.execute_calls[1][1][0] == {"email_lookup_hmac": "hash"}
+
+    @pytest.mark.asyncio
+    async def test_validate_company_cpf_raises_on_existing_hash(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Dispara erro quando HMAC de CPF já existe no schema público."""
+        connection = FakeConnection(
+            execute_results=[
+                FakeResult(scalar="public_user"),
+                FakeResult(fetchone=(1,)),
+            ]
+        )
+        engine = FakeEngine(connection=connection)
+
+        monkeypatch.setattr(database, "get_async_sql_engine", lambda: engine)
+        monkeypatch.setattr(
+            database.UserSecurity,
+            "compute_cpf_lookup_hmac",
+            staticmethod(lambda _: "cpf-hash"),
+        )
+
+        with pytest.raises(database.UserCpfAlreadyRegistered):
+            await database.validate_company_cpf("12345678901")
+
+        assert connection.execute_calls[1][1][0] == {"hash": "cpf-hash"}
 
 
 class TestInitializersModule:

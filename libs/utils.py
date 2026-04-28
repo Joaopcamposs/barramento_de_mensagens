@@ -1,3 +1,5 @@
+"""Helpers utilitarios compartilhados."""
+
 from collections.abc import Callable
 from datetime import date, datetime
 from enum import Enum

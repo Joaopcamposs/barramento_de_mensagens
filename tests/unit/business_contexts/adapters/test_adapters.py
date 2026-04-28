@@ -213,6 +213,7 @@ class TestDomainRepositories:
             session=FakeAsyncSession(execute_results=[FakeResult(scalar=None)])
         )
         monkeypatch.setattr(repo, "validate_company_email", AsyncMock())
+        monkeypatch.setattr(repo, "validate_company_cpf", AsyncMock())
 
         aggregate = await repo.create_aggregate(
             legal_name="Acme",
@@ -229,6 +230,7 @@ class TestDomainRepositories:
             session=FakeAsyncSession(execute_results=[FakeResult(scalar=object())])
         )
         monkeypatch.setattr(repo_dup, "validate_company_email", AsyncMock())
+        monkeypatch.setattr(repo_dup, "validate_company_cpf", AsyncMock())
         with pytest.raises(CompanyAlreadyRegistered):
             await repo_dup.create_aggregate(
                 legal_name="Acme",
@@ -321,6 +323,22 @@ class TestDomainRepositories:
         await CompanyDomainRepo.validate_company_email("john@example.com")
 
         assert captured == ["john@example.com"]
+
+    @pytest.mark.asyncio
+    async def test_company_domain_repo_validate_company_cpf_calls_infra(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Encaminha validação de CPF para camada de infraestrutura."""
+        captured: list[str] = []
+
+        async def fake_validate(cpf: str) -> None:
+            captured.append(cpf)
+
+        monkeypatch.setattr("infra.database.validate_company_cpf", fake_validate)
+
+        await CompanyDomainRepo.validate_company_cpf("12345678901")
+
+        assert captured == ["12345678901"]
 
     @pytest.mark.asyncio
     async def test_user_domain_repo_create_and_get_and_add_remove(
