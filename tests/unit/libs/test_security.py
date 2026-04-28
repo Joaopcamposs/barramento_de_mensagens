@@ -51,12 +51,12 @@ def test_encrypt_text_round_trip() -> None:
     assert UserSecurity.decrypt_text(encrypted) == "valor sensível"
 
 
-def test_generate_token_pair_and_decode_refresh_token() -> None:
+def test_generate_token_and_decode_refresh_token() -> None:
     """Gera par de tokens e decodifica o refresh token."""
     user_id = uuid7.create()
     company_id = uuid7.create()
 
-    token = UserSecurity.generate_token_pair(
+    token = UserSecurity.generate_token(
         user_id=user_id,
         company_id=company_id,
         expires_delta=timedelta(minutes=1),
@@ -73,7 +73,7 @@ def test_generate_token_pair_and_decode_refresh_token() -> None:
 
 def test_decode_refresh_token_rejects_access_token() -> None:
     """Rejeita token JWT que não é do tipo refresh."""
-    token = UserSecurity.generate_token_pair(
+    token = UserSecurity.generate_token(
         user_id=uuid7.create(),
         company_id=uuid7.create(),
     )

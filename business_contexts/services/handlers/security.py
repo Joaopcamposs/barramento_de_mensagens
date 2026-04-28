@@ -2,6 +2,7 @@
 
 from contextvars import ContextVar
 from typing import Annotated, cast
+from uuid import UUID
 
 import jwt
 from fastapi import Depends
@@ -20,7 +21,6 @@ from business_contexts.domain.excecoes import (
 from business_contexts.entrypoints.schemas.security import Token
 from business_contexts.domains import Domain
 from messagebus.unity_of_work import UnitOfWork
-from libs.security import UserSecurity
 
 current_user: ContextVar["User"] = ContextVar("current_user")
 
@@ -53,8 +53,8 @@ async def authenticate_user(command: AuthenticateUser, uow: UnitOfWork) -> Token
             raise InvalidCredentials
 
         return user.generate_token(
+            user_id=user.id,
             company_id=user.company,
-            encrypted_email=UserSecurity.encrypt_email(user.email),
         )
 
 
@@ -73,17 +73,17 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str | None = payload.get("email")
+        user_id: str | None = payload.get("sub")
         company_id: str | None = payload.get("id_empresa")
-        if email is None:
+        if user_id is None or company_id is None:
             raise CredentialsException()
     except (InvalidTokenError, ValidationError):
         raise CredentialsException()
 
-    uow = UnitOfWork(schema=str(company_id))
+    uow = UnitOfWork(schema=str(company_id), read_only=True)
     async with uow(Domain.user) as uow:
         view_repo: UserViewRepo = cast(UserViewRepo, uow.view_repo)
-        user = await view_repo.get_by_email(email)
+        user = await view_repo.get_by_id(UUID(user_id))
 
     if user is None:
         raise CredentialsException()

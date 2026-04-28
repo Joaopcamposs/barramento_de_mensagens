@@ -83,14 +83,14 @@ class TestSecurityHandlers:
             id=uuid7.create(), company=uuid7.create(), email="user@example.com"
         )
         fake_uow = FakeUoW(
-            view_repo=SimpleNamespace(get_by_email=AsyncMock(return_value=user))
+            view_repo=SimpleNamespace(get_by_id=AsyncMock(return_value=user))
         )
 
         monkeypatch.setattr(
             security_handlers.jwt,
             "decode",
             lambda token, key, algorithms: {
-                "email": "user@example.com",
+                "sub": str(user.id),
                 "id_empresa": str(user.company),
             },
         )
@@ -102,10 +102,10 @@ class TestSecurityHandlers:
         assert security_handlers.current_user.get() is user
 
     @pytest.mark.asyncio
-    async def test_get_current_user_raises_on_missing_email(
+    async def test_get_current_user_raises_on_missing_sub(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Lança erro de credenciais quando payload não contém email."""
+        """Lança erro de credenciais quando payload não contém sub."""
         monkeypatch.setattr(
             security_handlers.jwt,
             "decode",
@@ -138,7 +138,7 @@ class TestSecurityHandlers:
             security_handlers.jwt,
             "decode",
             lambda token, key, algorithms: {
-                "email": "u@example.com",
+                "sub": str(uuid7.create()),
                 "id_empresa": str(uuid7.create()),
             },
         )
@@ -146,7 +146,7 @@ class TestSecurityHandlers:
             security_handlers,
             "UnitOfWork",
             lambda **_: FakeUoW(
-                view_repo=SimpleNamespace(get_by_email=AsyncMock(return_value=None))
+                view_repo=SimpleNamespace(get_by_id=AsyncMock(return_value=None))
             ),
         )
 

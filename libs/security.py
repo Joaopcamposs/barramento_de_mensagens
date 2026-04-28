@@ -1,3 +1,5 @@
+"""Mixin de segurança para operações com senha e email do usuário."""
+
 import base64
 import binascii
 import hashlib
@@ -15,7 +17,6 @@ import bcrypt
 import jwt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from business_contexts.entrypoints.schemas.security import Token
 from libs.consts import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
@@ -23,11 +24,12 @@ from libs.consts import (
     REFRESH_TOKEN_EXPIRE_DAYS,
     SECRET_KEY,
 )
+from business_contexts.entrypoints.schemas.security import Token
 
 
 @dataclass
 class UserSecurity:
-    """Mixin de segurança para operações com senha, token e dados sensíveis."""
+    """Mixin de segurança para operações com senha e email do usuário."""
 
     _password_hash: str | None = None
 
@@ -58,18 +60,13 @@ class UserSecurity:
 
     @staticmethod
     def normalize_email(email: str) -> str:
-        """Normaliza email para comparações determinísticas."""
+        """Normaliza email para comparacoes deterministicas."""
         return email.strip().lower()
 
     @staticmethod
     def normalize_cpf(cpf: str) -> str:
-        """Normaliza CPF mantendo apenas dígitos."""
+        """Normaliza CPF mantendo apenas digitos."""
         return re.sub(r"\D", "", cpf)
-
-    @staticmethod
-    def hash_email(email: str) -> str:
-        """Gera um hash SHA-256 do email para compatibilidade com o modelo atual."""
-        return hashlib.sha256(UserSecurity.normalize_email(email).encode()).hexdigest()
 
     @staticmethod
     def _lookup_hmac(value: str) -> str:
@@ -95,71 +92,55 @@ class UserSecurity:
         """Criptografa o email usando AES-GCM."""
         aesgcm = AESGCM(get_aes_key())
         nonce = os.urandom(12)
-        encrypted_email = aesgcm.encrypt(nonce, email.encode(), None)
-        return nonce + encrypted_email
+        ct = aesgcm.encrypt(nonce, email.encode(), None)
+        return nonce + ct
 
     @staticmethod
     def decrypt_email(email: bytes) -> str:
         """Descriptografa o email usando AES-GCM."""
         aesgcm = AESGCM(get_aes_key())
-        nonce, encrypted_email = email[:12], email[12:]
-        return aesgcm.decrypt(nonce, encrypted_email, None).decode()
+        nonce, ct = email[:12], email[12:]
+        return aesgcm.decrypt(nonce, ct, None).decode()
 
     @staticmethod
     def encrypt_text(value: str) -> bytes:
-        """Criptografa um texto arbitrário usando AES-GCM."""
+        """Criptografa um texto arbitrario usando AES-GCM."""
         aesgcm = AESGCM(get_aes_key())
         nonce = os.urandom(12)
-        encrypted_value = aesgcm.encrypt(nonce, value.encode(), None)
-        return nonce + encrypted_value
+        ct = aesgcm.encrypt(nonce, value.encode(), None)
+        return nonce + ct
 
     @staticmethod
     def decrypt_text(value: bytes) -> str:
-        """Descriptografa um texto arbitrário usando AES-GCM."""
+        """Descriptografa um texto arbitrario usando AES-GCM."""
         aesgcm = AESGCM(get_aes_key())
-        nonce, encrypted_value = value[:12], value[12:]
-        return aesgcm.decrypt(nonce, encrypted_value, None).decode()
-
-    def generate_token(
-        self,
-        company_id: UUID,
-        encrypted_email: bytes,
-        expires_delta: timedelta | None = None,
-    ) -> Token:
-        """
-        Gera um token JWT compatível com o contrato atual da aplicação.
-
-        Args:
-            company_id: UUID da empresa do usuário.
-            encrypted_email: Email criptografado do usuário.
-            expires_delta: Tempo de expiração customizado.
-
-        Returns:
-            Token JWT com tipo bearer.
-        """
-        data_to_encode: dict[str, Any] = {
-            "email": self.decrypt_email(encrypted_email),
-            "id_empresa": str(company_id),
-        }
-        expire = datetime.now(tz=UTC) + (
-            expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        )
-        data_to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(data_to_encode, SECRET_KEY, algorithm=ALGORITHM)
-        return Token(access_token=encoded_jwt, token_type="bearer")
+        nonce, ct = value[:12], value[12:]
+        return aesgcm.decrypt(nonce, ct, None).decode()
 
     @staticmethod
-    def generate_token_pair(
+    def generate_token(
         user_id: UUID,
         company_id: UUID,
         expires_delta: timedelta | None = None,
     ) -> Token:
         """
-        Gera par de access token e refresh token para fluxos novos.
+        Gera um par de tokens JWT (access + refresh) para o usuário autenticado.
 
-        O access token é curto; o refresh token é longo e contém claim ``type=refresh``.
+        O access_token é curto (definido por ACCESS_TOKEN_EXPIRE_MINUTES).
+        O refresh_token é longo (definido por REFRESH_TOKEN_EXPIRE_DAYS) e
+        contém um claim ``type: refresh`` para diferenciá-lo.
+
+        Args:
+            user_id: UUID do usuário autenticado.
+            company_id: UUID da empresa do usuário.
+            expires_delta: Tempo de expiração customizado para o access_token.
+
+        Returns:
+            Token JWT com access_token, refresh_token e tipo bearer.
         """
         now = datetime.now(tz=UTC)
+
+        # Access token
         access_expire = now + (
             expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         )
@@ -171,6 +152,7 @@ class UserSecurity:
         }
         access_jwt = jwt.encode(access_payload, SECRET_KEY, algorithm=ALGORITHM)
 
+        # Refresh token
         refresh_expire = now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
         refresh_payload: dict[str, Any] = {
             "sub": str(user_id),
@@ -191,8 +173,14 @@ class UserSecurity:
         """
         Decodifica e valida um refresh token JWT.
 
+        Args:
+            token: Refresh token JWT.
+
+        Returns:
+            Payload do token com sub, id_empresa, type.
+
         Raises:
-            InvalidTokenError: Se o token não for um refresh token válido.
+            InvalidTokenError: Se o token estiver expirado, inválido ou não for do tipo refresh.
         """
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("type") != "refresh":
@@ -213,7 +201,7 @@ def get_aes_key() -> bytes:
         return raw_key
 
     if _is_test_runtime():
-        return hashlib.sha256(b"barramento-test-aes-key").digest()
+        return hashlib.sha256(b"kontas-test-aes-key").digest()
 
     raise ValueError(
         "A variável AES_KEY deve conter uma chave AES válida em base64 ou texto cru com 16, 24 ou 32 bytes."

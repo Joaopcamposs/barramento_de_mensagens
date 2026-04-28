@@ -719,31 +719,31 @@ class TestUserSecurity:
 
         assert security.verify_password("wrong_password") is False
 
-    def test_hash_email_returns_sha256_hex(self) -> None:
-        """Verifica que hash_email retorna um hash SHA-256 hexadecimal."""
-        email_hash = UserSecurity.hash_email("test@example.com")
+    def test_email_lookup_hmac_returns_hex(self) -> None:
+        """Verifica que o lookup de email retorna HMAC hexadecimal."""
+        email_hash = UserSecurity.compute_email_lookup_hmac("test@example.com")
 
         assert len(email_hash) == 64
         assert all(c in "0123456789abcdef" for c in email_hash)
 
-    def test_hash_email_is_deterministic(self) -> None:
-        """Verifica que hash_email retorna o mesmo hash para o mesmo email."""
-        hash1 = UserSecurity.hash_email("test@example.com")
-        hash2 = UserSecurity.hash_email("test@example.com")
+    def test_email_lookup_hmac_is_deterministic(self) -> None:
+        """Verifica que o lookup de email é determinístico."""
+        hash1 = UserSecurity.compute_email_lookup_hmac("test@example.com")
+        hash2 = UserSecurity.compute_email_lookup_hmac("test@example.com")
 
         assert hash1 == hash2
 
-    def test_hash_email_normalizes_case_and_whitespace(self) -> None:
-        """Verifica que hash_email normaliza maiúsculas e espaços."""
-        hash1 = UserSecurity.hash_email("Test@Example.com")
-        hash2 = UserSecurity.hash_email("  test@example.com  ")
+    def test_email_lookup_hmac_normalizes_case_and_whitespace(self) -> None:
+        """Verifica que o lookup de email normaliza maiúsculas e espaços."""
+        hash1 = UserSecurity.compute_email_lookup_hmac("Test@Example.com")
+        hash2 = UserSecurity.compute_email_lookup_hmac("  test@example.com  ")
 
         assert hash1 == hash2
 
-    def test_hash_email_different_emails_different_hashes(self) -> None:
-        """Verifica que emails diferentes geram hashes diferentes."""
-        hash1 = UserSecurity.hash_email("a@example.com")
-        hash2 = UserSecurity.hash_email("b@example.com")
+    def test_email_lookup_hmac_different_emails_different_hashes(self) -> None:
+        """Verifica que emails diferentes geram HMACs diferentes."""
+        hash1 = UserSecurity.compute_email_lookup_hmac("a@example.com")
+        hash2 = UserSecurity.compute_email_lookup_hmac("b@example.com")
 
         assert hash1 != hash2
 
