@@ -24,7 +24,7 @@ class TestUserApi:
         created_id = await user_api.post_user(
             CreateUserSchema(
                 email="user@example.com",
-                password="secret",
+                password="secret123",
                 cpf="12345678901",
                 active=True,
                 admin=False,

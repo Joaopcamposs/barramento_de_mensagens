@@ -26,7 +26,7 @@ class TestCompanyApi:
             responsible_name="John",
             email="john@example.com",
             cpf="12345678901",
-            password="secret",
+            password="Secret123",
             active=True,
         )
         created_id = await company_api.post_company(body, bus=bus)

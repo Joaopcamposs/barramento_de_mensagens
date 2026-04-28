@@ -478,14 +478,14 @@ class TestUserSchemas:
         """Verifica o schema de atualização de usuário."""
         schema = UpdateUserSchema(
             new_email="new@example.com",
-            new_password="newpwd",
+            new_password="newpassword",
             new_active=False,
             new_admin=True,
         )
 
         assert schema.new_email == "new@example.com"
         assert schema.new_email == "new@example.com"
-        assert schema.new_password == "newpwd"
+        assert schema.new_password == "newpassword"
         assert schema.new_active is False
         assert schema.new_admin is True
 

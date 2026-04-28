@@ -6,22 +6,19 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
-import sentry_sdk
 
-from business_contexts.adapters.repository.view_repo.user import UserViewRepo
+from business_contexts.adapters.views.user import get_tenant_user
 from business_contexts.bootstrap import bootstrap
 from business_contexts.domain.commands.security import AuthenticateUser
 from business_contexts.domain.entitites.user import User
 from business_contexts.domain.excecoes import InvalidRefreshToken
-from business_contexts.domains import Domain
 from business_contexts.entrypoints.schemas.security import RefreshTokenRequest, Token
 from business_contexts.entrypoints.schemas.user import ReadUserSchema
 from business_contexts.services.handlers.security import get_current_user
-from libs.logger import fingerprint
+from libs.logger import fingerprint, logger
 from libs.rate_limit import limiter
 from libs.security import UserSecurity
 from libs.turnstile import verify_turnstile
-from messagebus.unity_of_work import UnitOfWork
 
 security_router = APIRouter(prefix="/api", tags=["Login"])
 
@@ -49,7 +46,10 @@ async def login_for_access_token(
             )
         ),
     )
-    sentry_sdk.set_user({"email_hash": fingerprint(form_data.username)})
+    logger.info(
+        "operation=login status=success email_hash=%s",
+        fingerprint(form_data.username),
+    )
     return token
 
 
@@ -67,15 +67,15 @@ async def refresh_access_token(
     except (InvalidTokenError, KeyError, TypeError, ValueError) as error:
         raise InvalidRefreshToken from error
 
-    uow: UnitOfWork = UnitOfWork(schema=str(company_id), read_only=True)
-    async with uow(Domain.user) as uow:
-        view_repo: UserViewRepo = uow.get_view_repo(UserViewRepo)
-        user = await view_repo.get_by_id(user_id)
-
+    user = await get_tenant_user(schema=str(company_id), user_id=user_id)
     if not user or not user.active:
         raise InvalidRefreshToken
 
-    sentry_sdk.set_user({"id": str(user.id), "email_hash": fingerprint(user.email or "")})
+    logger.info(
+        "operation=token_refresh status=success user_id=%s company_id=%s",
+        user_id,
+        company_id,
+    )
     return user.generate_token(user_id=user.id, company_id=user.company)
 
 

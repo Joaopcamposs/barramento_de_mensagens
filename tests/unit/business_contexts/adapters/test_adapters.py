@@ -29,6 +29,7 @@ from business_contexts.adapters.repository.view_repo.company import CompanyViewR
 from business_contexts.adapters.repository.view_repo.user import UserViewRepo
 from business_contexts.adapters.views.audit_log import view_audit_log
 from business_contexts.adapters.views.company import view_company
+from business_contexts.adapters.views import user as user_views
 from business_contexts.adapters.views.user import view_user
 from business_contexts.domain.aggregate.company import Company
 from business_contexts.domain.aggregate.user import PublicUser, User
@@ -654,6 +655,45 @@ class TestViewRepositoriesAndAdaptersViews:
             email="missing@example.com",
         )
         assert empty == []
+
+    @pytest.mark.asyncio
+    async def test_user_view_helpers_route_public_and_tenant_users(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Cobre helpers genéricos de usuário público e usuário do tenant."""
+        public_user = SimpleNamespace(id=uuid7.create(), company=uuid7.create())
+        tenant_user = SimpleNamespace(id=public_user.id, company=public_user.company)
+        public_uow = FakeUoW(
+            view_repo=SimpleNamespace(
+                get_public_user_by_email=AsyncMock(return_value=public_user),
+                get_by_id=AsyncMock(return_value=tenant_user),
+            )
+        )
+        monkeypatch.setattr(user_views, "UnitOfWork", lambda **_: public_uow)
+
+        assert (
+            await user_views.get_public_user_by_email("user@example.com") is public_user
+        )
+        assert (
+            await user_views.get_tenant_user(
+                schema=public_user.company,
+                user_id=public_user.id,
+            )
+            is tenant_user
+        )
+
+        missing_uow = FakeUoW(
+            view_repo=SimpleNamespace(
+                get_public_user_by_email=AsyncMock(return_value=None),
+                get_by_id=AsyncMock(return_value=None),
+            )
+        )
+        monkeypatch.setattr(user_views, "UnitOfWork", lambda **_: missing_uow)
+
+        with pytest.raises(UserNotFound):
+            await user_views.get_public_user_by_email("missing@example.com")
+        with pytest.raises(UserNotFound):
+            await user_views.get_tenant_user(schema="tenant", user_id=uuid7.create())
 
     @pytest.mark.asyncio
     async def test_audit_log_view_repo_and_view_adapter(

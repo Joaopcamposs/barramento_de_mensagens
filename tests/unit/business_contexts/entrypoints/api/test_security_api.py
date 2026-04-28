@@ -9,7 +9,6 @@ import uuid7
 
 from business_contexts.domain.excecoes import InvalidCredentials, InvalidRefreshToken
 from business_contexts.entrypoints.api import security as security_api
-from tests.unit.helpers import FakeUoW
 
 
 def make_request() -> Request:
@@ -84,15 +83,13 @@ class TestSecurityApi:
                 refresh_token=f"refresh-{company_id}",
             ),
         )
-        view_repo = SimpleNamespace(get_by_id=AsyncMock(return_value=user))
-        fake_uow = FakeUoW(view_repo=view_repo)
-
         monkeypatch.setattr(
             security_api.UserSecurity,
             "decode_refresh_token",
             staticmethod(lambda _: {"sub": str(user_id), "id_empresa": str(company_id)}),
         )
-        monkeypatch.setattr(security_api, "UnitOfWork", lambda **_: fake_uow)
+        get_tenant_user = AsyncMock(return_value=user)
+        monkeypatch.setattr(security_api, "get_tenant_user", get_tenant_user)
 
         token = await security_api.refresh_access_token(
             make_request(),
@@ -100,7 +97,7 @@ class TestSecurityApi:
         )
 
         assert token.access_token == f"jwt-{user_id}"
-        view_repo.get_by_id.assert_awaited_once_with(user_id)
+        get_tenant_user.assert_awaited_once_with(schema=str(company_id), user_id=user_id)
 
     @pytest.mark.asyncio
     async def test_refresh_access_token_rejects_invalid_token(
