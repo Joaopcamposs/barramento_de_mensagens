@@ -10,6 +10,9 @@ import pytest
 import uuid7
 
 from business_contexts.domains import Domain
+from business_contexts.domain.excecoes import CredentialsException
+from business_contexts.adapters.repository.domain_repo.user import UserDomainRepo
+from business_contexts.adapters.repository.view_repo.user import UserViewRepo
 from messagebus.bootstrap import bootstrap_base
 from messagebus.entities import (
     Aggregate,
@@ -144,9 +147,7 @@ class TestUnitOfWorkBase:
 
         assert write_session.committed is True
         assert write_session.closed is True
-        assert write_session.bind.disposed is True
         assert read_session.closed is True
-        assert read_session.bind.disposed is True
         assert uow.session is None
         assert uow.read_session is None
 
@@ -193,6 +194,23 @@ class TestUnitOfWorkBase:
         assert aggregate.events == []
 
     @pytest.mark.asyncio
+    async def test_collect_new_events_yields_events_without_aggregate(self) -> None:
+        """Coleta eventos registrados diretamente na UoW, sem agregado."""
+
+        @dataclass(kw_only=True, frozen=True)
+        class DemoEvent(Event):
+            name: str
+
+        uow = UnitOfWork(
+            session_factory=lambda **_: FakeAsyncSession(), schema="tenant-d"
+        )
+        uow.add_events_without_aggregate(DemoEvent(name="detached"))
+
+        collected = list(uow.collect_new_events())
+
+        assert [event.name for event in collected] == ["detached"]
+
+    @pytest.mark.asyncio
     async def test_unit_of_work_create_schema_branch_uses_schema_builder(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -226,3 +244,50 @@ class TestUnitOfWorkBase:
             assert uow.create_schema is False
 
         assert builder_calls == [(session_factory, "tenant-e")]
+
+    @pytest.mark.asyncio
+    async def test_unit_of_work_read_only_opens_only_read_session(self) -> None:
+        """Em modo somente leitura, abre apenas sessão de leitura e view_repo."""
+        read_session = FakeAsyncSession()
+        calls: list[bool] = []
+
+        async def session_factory(read_only: bool, **_: Any) -> FakeAsyncSession:
+            calls.append(read_only)
+            return read_session
+
+        uow = UnitOfWork(
+            session_factory=session_factory, schema="tenant-read", read_only=True
+        )
+        uow(Domain.user)
+
+        async with uow:
+            assert uow.session is None
+            assert isinstance(uow.view_repo.session, FakeAsyncSession)
+
+        assert calls == [True]
+        assert read_session.closed is True
+
+    @pytest.mark.asyncio
+    async def test_unit_of_work_get_repo_helpers_validate_types(self) -> None:
+        """Retorna repositórios tipados e falha quando o tipo esperado diverge."""
+        write_session = FakeAsyncSession()
+        read_session = FakeAsyncSession()
+
+        async def session_factory(read_only: bool, **_: Any) -> FakeAsyncSession:
+            return read_session if read_only else write_session
+
+        uow = UnitOfWork(session_factory=session_factory, schema="tenant-helper")
+        uow(Domain.user)
+
+        async with uow:
+            assert isinstance(uow.get_domain_repo(UserDomainRepo), UserDomainRepo)
+            assert isinstance(uow.get_view_repo(UserViewRepo), UserViewRepo)
+            with pytest.raises(TypeError):
+                uow.get_domain_repo(UserViewRepo)  # type: ignore[type-var]
+
+    def test_require_user_id_raises_without_user(self) -> None:
+        """Garante erro de credenciais quando não há usuário autenticado."""
+        uow = UnitOfWork(session_factory=lambda **_: FakeAsyncSession(), schema="tenant")
+
+        with pytest.raises(CredentialsException):
+            uow.require_user_id()

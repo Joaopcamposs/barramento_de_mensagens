@@ -143,6 +143,14 @@ class FakeUoW:
         """Retorna o id do usuário fake, quando existir."""
         return self.user.id if self.user else None
 
+    def get_domain_repo(self, repo_type: Any) -> Any:
+        """Retorna domain_repo fake, espelhando helper tipado da UoW real."""
+        return self.domain_repo
+
+    def get_view_repo(self, repo_type: Any) -> Any:
+        """Retorna view_repo fake, espelhando helper tipado da UoW real."""
+        return self.view_repo
+
     async def commit(self) -> None:
         """Simula commit da UoW."""
         self.committed = True

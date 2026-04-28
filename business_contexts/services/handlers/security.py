@@ -20,13 +20,14 @@ from business_contexts.domain.excecoes import (
 from business_contexts.entrypoints.schemas.security import Token
 from business_contexts.domains import Domain
 from messagebus.unity_of_work import UnitOfWork
+from libs.security import UserSecurity
 
 current_user: ContextVar["User"] = ContextVar("current_user")
 
 
 async def authenticate_user(command: AuthenticateUser, uow: UnitOfWork) -> Token | None:
     """
-    Autentica um usuário pelo email e senha via usuário público.
+    Autentica um usuário pelo email e senha via schema do tenant.
 
     Args:
         command: Comando de autenticação com email e senha.
@@ -37,8 +38,15 @@ async def authenticate_user(command: AuthenticateUser, uow: UnitOfWork) -> Token
     """
     async with uow(Domain.user) as uow:
         view_repo: UserViewRepo = cast(UserViewRepo, uow.view_repo)
+        public_user = await view_repo.get_public_user_by_email(command.email)
 
-        user = await view_repo.get_public_user_by_email(command.email)
+    if not public_user:
+        raise UserNotFound
+
+    tenant_uow = UnitOfWork(schema=str(public_user.company), read_only=True)
+    async with tenant_uow(Domain.user) as tenant_ctx:
+        tenant_view_repo = tenant_ctx.get_view_repo(UserViewRepo)
+        user = await tenant_view_repo.get_by_id(public_user.id)
         if not user:
             raise UserNotFound
         if not user.verify_password(command.password):
@@ -46,7 +54,7 @@ async def authenticate_user(command: AuthenticateUser, uow: UnitOfWork) -> Token
 
         return user.generate_token(
             company_id=user.company,
-            encrypted_email=user.email_encrypted,
+            encrypted_email=UserSecurity.encrypt_email(user.email),
         )
 
 
@@ -82,4 +90,25 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
 
     current_user.set(user)
 
+    return user
+
+
+async def get_current_admin_user(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
+    """
+    Obtém o usuário autenticado e garante privilégios de administrador.
+
+    Args:
+        token: Token JWT do cabeçalho Authorization.
+
+    Returns:
+        Entidade User do usuário autenticado.
+
+    Raises:
+        CredentialsException: Se o token for inválido, o usuário não for encontrado
+            ou não tiver perfil administrador.
+    """
+    user = await get_current_user(token)
+    if not user.admin:
+        raise CredentialsException()
+    current_user.set(user)
     return user

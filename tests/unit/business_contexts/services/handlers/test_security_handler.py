@@ -35,10 +35,16 @@ class TestSecurityHandlers:
                 command, FakeUoW(view_repo=view_repo_none)
             )  # type: ignore[arg-type]
 
+        public_user = SimpleNamespace(id=uuid7.create(), company=uuid7.create())
         bad_user = SimpleNamespace(verify_password=lambda _: False)
         view_repo_bad = SimpleNamespace(
-            get_public_user_by_email=AsyncMock(return_value=bad_user)
+            get_public_user_by_email=AsyncMock(return_value=public_user)
         )
+        tenant_bad_uow = FakeUoW(
+            view_repo=SimpleNamespace(get_by_id=AsyncMock(return_value=bad_user))
+        )
+        original_unit_of_work = security_handlers.UnitOfWork
+        security_handlers.UnitOfWork = lambda **_: tenant_bad_uow  # type: ignore[assignment]
         with pytest.raises(InvalidCredentials):
             await security_handlers.authenticate_user(
                 command, FakeUoW(view_repo=view_repo_bad)
@@ -46,19 +52,27 @@ class TestSecurityHandlers:
 
         token = Token(access_token="jwt", token_type="bearer")
         good_user = SimpleNamespace(
+            id=uuid7.create(),
             company=uuid7.create(),
-            email_encrypted=b"enc",
+            email="user@example.com",
             verify_password=lambda _: True,
             generate_token=lambda **_: token,
         )
         view_repo_good = SimpleNamespace(
-            get_public_user_by_email=AsyncMock(return_value=good_user)
+            get_public_user_by_email=AsyncMock(return_value=public_user)
         )
+        tenant_good_uow = FakeUoW(
+            view_repo=SimpleNamespace(get_by_id=AsyncMock(return_value=good_user))
+        )
+        security_handlers.UnitOfWork = lambda **_: tenant_good_uow  # type: ignore[assignment]
 
-        authenticated = await security_handlers.authenticate_user(
-            command, FakeUoW(view_repo=view_repo_good)
-        )  # type: ignore[arg-type]
-        assert authenticated == token
+        try:
+            authenticated = await security_handlers.authenticate_user(
+                command, FakeUoW(view_repo=view_repo_good)
+            )  # type: ignore[arg-type]
+            assert authenticated == token
+        finally:
+            security_handlers.UnitOfWork = original_unit_of_work  # type: ignore[assignment]
 
     @pytest.mark.asyncio
     async def test_get_current_user_success_sets_context(

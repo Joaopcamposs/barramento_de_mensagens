@@ -40,6 +40,14 @@ class FakeCommand(Command):
 
 
 @dataclass(frozen=True)
+class SensitiveCommand(Command):
+    """Comando fake com campo sensível para testar logging seguro."""
+
+    email: str
+    password: str
+
+
+@dataclass(frozen=True)
 class FakeEvent(Event):
     """Evento fake para testes."""
 
@@ -158,6 +166,12 @@ class TestMessageBus:
         result = await bus.handle(FakeCommand(value="trigger"))
         assert result == "ok"
         assert "from_command" in event_results
+
+    def test_command_str_masks_sensitive_fields(self) -> None:
+        """Mascara campos sensíveis na representação textual de mensagens."""
+        command = SensitiveCommand(email="user@example.com", password="secret")
+
+        assert str(command) == "SensitiveCommand(email='user@example.com', password=***)"
 
 
 class TestOperationType:

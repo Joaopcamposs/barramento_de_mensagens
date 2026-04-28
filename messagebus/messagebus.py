@@ -1,28 +1,55 @@
-import logging
-import os
 from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Any, NewType
-
+from dataclasses import dataclass, fields, is_dataclass
+from typing import NewType, TypeVar
 import sentry_sdk
 
+from libs.consts import IS_ALPHA, IS_PROD, IS_TEST
+from libs.logger import logger
 from messagebus.unity_of_work import AbstractUnitOfWork
 
-# Configure logging to show INFO level messages
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler()],
+
+SENSITIVE_FIELD_MARKERS = (
+    "password",
+    "senha",
+    "token",
+    "secret",
+    "api_key",
+    "apikey",
+    "reset_link",
+    "authorization",
 )
 
-logger = logging.getLogger(__name__)
+
+def _is_sensitive_field(field_name: str) -> bool:
+    """Indica se o nome do campo sugere conteúdo sensível que deve ser mascarado."""
+    normalized_field_name = field_name.casefold()
+    return any(marker in normalized_field_name for marker in SENSITIVE_FIELD_MARKERS)
+
+
+def _safe_message_repr(message: object) -> str:
+    """Serializa mensagens de forma segura, mascarando campos sensíveis."""
+    if not is_dataclass(message):
+        return repr(message)
+
+    parts: list[str] = []
+    for field_info in fields(message):
+        field_name = field_info.name
+        field_value = getattr(message, field_name)
+        if _is_sensitive_field(field_name):
+            parts.append(f"{field_name}=***")
+            continue
+        parts.append(f"{field_name}={field_value!r}")
+
+    return f"{type(message).__name__}({', '.join(parts)})"
 
 
 @dataclass(frozen=True)
 class Command:
     """Classe base para todos os comandos do sistema."""
 
-    pass
+    def __str__(self) -> str:
+        """Retorna uma representação segura para logging."""
+        return _safe_message_repr(self)
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -31,6 +58,10 @@ class Event:
 
     execute_async: bool = False
 
+    def __str__(self) -> str:
+        """Retorna uma representação segura para logging."""
+        return _safe_message_repr(self)
+
 
 Message = Command | Event
 
@@ -38,6 +69,8 @@ Message = Command | Event
 EventHandlers = NewType("EventHandlers", dict[type[Event], list[Callable]])
 
 CommandHandlers = NewType("CommandHandlers", dict[type[Command], Callable])
+
+CommandResult = TypeVar("CommandResult")
 
 
 class MessageBus:
@@ -62,7 +95,7 @@ class MessageBus:
         self.raise_event_errors = raise_event_errors
         self.queue: list[Message] = []
 
-    async def handle(self, message: Message) -> Any | None:
+    async def handle(self, message: Message) -> CommandResult | None:
         """
         Processa uma mensagem (comando ou evento).
 
@@ -73,7 +106,7 @@ class MessageBus:
             Resultado do comando, se a mensagem for um comando.
         """
         self.queue = [message]
-        command_result: Any | None = None
+        command_result: CommandResult | None = None
 
         while self.queue:
             message = self.queue.pop(0)
@@ -90,29 +123,31 @@ class MessageBus:
         """Processa um evento, delegando para os handlers registrados."""
         for handler in self.event_handlers.get(type(event), []):
             try:
-                logger.debug(f"Processing event {event} with handler {handler}")
+                logger.debug(
+                    f"Processing event {type(event).__name__} with handler {handler}"
+                )
                 await handler(event)
                 self.queue.extend(self.uow.collect_new_events())
             except Exception as error:
-                logger.exception(f"Error processing event {event}")
+                logger.exception(f"Error processing event {type(event).__name__}")
                 self._handle_event_error(error)
 
     def _handle_event_error(self, error: Exception) -> None:
         """Trata erros de processamento de eventos."""
-        if self.raise_event_errors or os.getenv("TEST_ENV") == "true":
+        if self.raise_event_errors or IS_TEST:
             raise error
 
-        if os.getenv("ENV_CONFIG", "development") in ["alpha", "prod"]:
+        if IS_ALPHA or IS_PROD:
             sentry_sdk.capture_exception(error)
 
-    async def _handle_command(self, command: Command) -> Any | None:
+    async def _handle_command(self, command: Command) -> CommandResult | None:
         """Processa um comando, delegando para o handler registrado."""
-        logger.debug(f"Processing command {command}")
+        logger.debug(f"Processing command {type(command).__name__}")
         try:
             handler = self.command_handlers[type(command)]
             result = await handler(command)
             self.queue.extend(self.uow.collect_new_events())
             return result
         except Exception as error:
-            logger.exception(f"Error processing command {command}")
+            logger.exception(f"Error processing command {type(command).__name__}")
             raise error

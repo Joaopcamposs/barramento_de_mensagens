@@ -2,7 +2,7 @@
 
 from abc import ABC
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -42,7 +42,7 @@ class ViewRepository(ABC):
         self,
         session: AsyncSession | None = None,
     ) -> None:
-        """Anexa uma sessão async existente ao repositório de leitura, quando fornecida."""
+        """Anexa uma sessão async existente ao repositório de leitura, quando há."""
         if session is not None:
             self.session = session
 
@@ -131,22 +131,22 @@ class Aggregate(AuditBase):
 
     @property
     def operation_type(self) -> OperationType | None:
-        """Retorna o último tipo de operação atribuído ao agregado."""
+        """Retorna o ultimo tipo de operacao atribuida ao agregado."""
         return self._operation_type
 
     def _set_create_audit(self, user_id: UUID | None) -> None:
         """Define os campos de auditoria de criação (created_at e created_by)."""
-        self.created_at = datetime.now(timezone.utc)
+        self.created_at = datetime.now(UTC)
         self.created_by = user_id
 
     def _set_update_audit(self, user_id: UUID | None) -> None:
         """Define os campos de auditoria de atualização (updated_at e updated_by)."""
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
         self.updated_by = user_id
 
     def _set_delete_audit(self, user_id: UUID | None) -> None:
         """Define os campos de auditoria de exclusão (deleted_at e deleted_by)."""
-        self.deleted_at = datetime.now(timezone.utc)
+        self.deleted_at = datetime.now(UTC)
         self.deleted_by = user_id
 
     def add_event(self, event: "Event") -> None:
