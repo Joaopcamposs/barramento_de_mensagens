@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from business_contexts.consts import FIRST_USER_CPF, FIRST_USER_PASSWORD
+from libs.consts import FIRST_USER_CPF, FIRST_USER_PASSWORD
 from messagebus.entities import AuditableEvent
 from messagebus.messagebus import Event
 

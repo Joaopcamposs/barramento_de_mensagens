@@ -10,7 +10,6 @@ from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
 
 from business_contexts.adapters.repository.view_repo.user import UserViewRepo
-from business_contexts.consts import ALGORITHM, SECRET_KEY, oauth2_scheme
 from business_contexts.domain.commands.security import AuthenticateUser
 from business_contexts.domain.entitites.user import User
 from business_contexts.domain.excecoes import (
@@ -20,6 +19,7 @@ from business_contexts.domain.excecoes import (
 )
 from business_contexts.entrypoints.schemas.security import Token
 from business_contexts.domains import Domain
+from libs.consts import ALGORITHM, SECRET_KEY, oauth2_scheme
 from messagebus.unity_of_work import UnitOfWork
 
 current_user: ContextVar["User"] = ContextVar("current_user")
@@ -43,7 +43,7 @@ async def authenticate_user(command: AuthenticateUser, uow: UnitOfWork) -> Token
     if not public_user:
         raise UserNotFound
 
-    tenant_uow = UnitOfWork(schema=str(public_user.company), read_only=True)
+    tenant_uow: UnitOfWork = UnitOfWork(schema=str(public_user.company), read_only=True)
     async with tenant_uow(Domain.user) as tenant_ctx:
         tenant_view_repo = tenant_ctx.get_view_repo(UserViewRepo)
         user = await tenant_view_repo.get_by_id(public_user.id)
@@ -80,7 +80,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
     except (InvalidTokenError, ValidationError):
         raise CredentialsException()
 
-    uow = UnitOfWork(schema=str(company_id), read_only=True)
+    uow: UnitOfWork = UnitOfWork(schema=str(company_id), read_only=True)
     async with uow(Domain.user) as uow:
         view_repo: UserViewRepo = cast(UserViewRepo, uow.view_repo)
         user = await view_repo.get_by_id(UUID(user_id))

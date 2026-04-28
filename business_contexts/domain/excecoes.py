@@ -59,3 +59,11 @@ class InvalidCredentials(HTTPException):
 
     status_code: int = 400
     detail: str = "Incorrect username or password"
+
+
+@dataclass
+class InvalidRefreshToken(HTTPException):
+    """Exceção lançada quando o refresh token é inválido."""
+
+    status_code: int = 401
+    detail: str = "Invalid refresh token"

@@ -5,7 +5,6 @@ from uuid import UUID
 
 import uuid7
 
-from business_contexts.consts import ADMIN_USER_PREFIX
 from business_contexts.domain.value_objects.enums import EntityType
 from business_contexts.domain.events.company import (
     CompanyCreated,
@@ -17,6 +16,7 @@ from business_contexts.domain.events.user import (
     TimeToCreateInitialCompanyUser,
 )
 from libs.basic_types import Email
+from libs.consts import ADMIN_USER_PREFIX
 from messagebus.entities import Aggregate, OperationType
 
 
